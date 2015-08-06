@@ -8,6 +8,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/http/http_utils.h>
+#include <chromeos/streams/memory_stream.h>
 
 namespace buffet {
 
@@ -67,9 +68,14 @@ HttpTransportClient::SendRequestAndBlock(const std::string& method,
                                          const Headers& headers,
                                          const std::string& data,
                                          chromeos::ErrorPtr* error) {
-  return std::unique_ptr<weave::HttpClient::Response>{new ResponseImpl{
-      chromeos::http::SendRequestAndBlock(method, url, data.data(), data.size(),
-                                          "", headers, transport_, error)}};
+  chromeos::http::Request request(url, method, transport_);
+  request.AddHeaders(headers);
+  if (!data.empty()) {
+    if (!request.AddRequestBody(data.data(), data.size(), error))
+      return nullptr;
+  }
+   return std::unique_ptr<weave::HttpClient::Response>{
+      new ResponseImpl{request.GetResponseAndBlock(error)}};
 }
 
 int HttpTransportClient::SendRequest(const std::string& method,
@@ -78,10 +84,21 @@ int HttpTransportClient::SendRequest(const std::string& method,
                                      const std::string& data,
                                      const SuccessCallback& success_callback,
                                      const ErrorCallback& error_callback) {
-  return chromeos::http::SendRequest(
-      method, url, data.data(), data.size(), "", headers, transport_,
-      base::Bind(&OnSuccessCallback, success_callback),
-      base::Bind(&OnErrorCallback, error_callback));
+  chromeos::http::Request request(url, method, transport_);
+  request.AddHeaders(headers);
+  if (!data.empty()) {
+    auto stream = chromeos::MemoryStream::OpenCopyOf(data, nullptr);
+    CHECK_GT(stream->GetRemainingSize(), 0);
+    chromeos::ErrorPtr error;
+    if (!request.AddRequestBody(std::move(stream), &error)) {
+      transport_->RunCallbackAsync(
+          FROM_HERE,
+          base::Bind(error_callback, 0, base::Owned(error.release())));
+      return 0;
+    }
+  }
+  return request.GetResponse(base::Bind(&OnSuccessCallback, success_callback),
+                             base::Bind(&OnErrorCallback, error_callback));
 }
 
 }  // namespace buffet
