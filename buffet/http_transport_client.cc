@@ -64,25 +64,22 @@ HttpTransportClient::~HttpTransportClient() {}
 std::unique_ptr<weave::HttpClient::Response>
 HttpTransportClient::SendRequestAndBlock(const std::string& method,
                                          const std::string& url,
-                                         const std::string& data,
-                                         const std::string& mime_type,
                                          const Headers& headers,
+                                         const std::string& data,
                                          chromeos::ErrorPtr* error) {
-  return std::unique_ptr<weave::HttpClient::Response>{
-      new ResponseImpl{chromeos::http::SendRequestAndBlock(
-          method, url, data.data(), data.size(), mime_type, headers, transport_,
-          error)}};
+  return std::unique_ptr<weave::HttpClient::Response>{new ResponseImpl{
+      chromeos::http::SendRequestAndBlock(method, url, data.data(), data.size(),
+                                          "", headers, transport_, error)}};
 }
 
 int HttpTransportClient::SendRequest(const std::string& method,
                                      const std::string& url,
-                                     const std::string& data,
-                                     const std::string& mime_type,
                                      const Headers& headers,
+                                     const std::string& data,
                                      const SuccessCallback& success_callback,
                                      const ErrorCallback& error_callback) {
   return chromeos::http::SendRequest(
-      method, url, data.data(), data.size(), mime_type, headers, transport_,
+      method, url, data.data(), data.size(), "", headers, transport_,
       base::Bind(&OnSuccessCallback, success_callback),
       base::Bind(&OnErrorCallback, error_callback));
 }
