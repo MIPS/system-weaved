@@ -32,9 +32,9 @@ namespace buffet {
 
 class DBusCommandDispacher;
 class HttpTransportClient;
-class PeerdClient;
-class ShillClient;
-class WebServClient;
+//class PeerdClient;
+//class ShillClient;
+//class WebServClient;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -120,9 +120,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<HttpTransportClient> http_client_;
-  std::unique_ptr<ShillClient> shill_client_;
-  std::unique_ptr<PeerdClient> peerd_client_;
-  std::unique_ptr<WebServClient> web_serv_client_;
+//  std::unique_ptr<ShillClient> shill_client_;
+//  std::unique_ptr<PeerdClient> peerd_client_;
+//  std::unique_ptr<WebServClient> web_serv_client_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
 
