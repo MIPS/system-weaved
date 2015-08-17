@@ -44,6 +44,7 @@ buffetSharedLibraries := \
 	libchromeos-dbus \
 	libchromeos-http \
 	libchromeos-stream \
+	libconnectivity \
 	libdbus \
 	libweave \
 
@@ -68,12 +69,13 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_constants.cc \
 	buffet/http_transport_client.cc \
 	buffet/manager.cc \
+	buffet/mdns_client.cc \
+	buffet/network_client.cc \
 
 #	buffet/dbus_bindings/org.chromium.Buffet.Command.xml \
 #	buffet/dbus_bindings/org.chromium.Buffet.Manager.xml \
 #	buffet/ap_manager_client.cc \
 #	buffet/peerd_client.cc \
-#	buffet/shill_client.cc \
 #	buffet/webserv_client.cc \
 
 include $(BUILD_STATIC_LIBRARY)
@@ -82,7 +84,16 @@ include $(BUILD_STATIC_LIBRARY)
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
-LOCAL_REQUIRED_MODULES := init.weaved.rc
+LOCAL_REQUIRED_MODULES := \
+	base_state.defaults.json \
+	base_state.schema.json \
+	gcd.json \
+	org.chromium.Buffet.conf \
+
+ifdef INITRC_TEMPLATE
+LOCAL_REQUIRED_MODULES += init.weaved.rc
+endif
+
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
@@ -97,17 +108,17 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_EXECUTABLE)
 
+ifdef INITRC_TEMPLATE
 include $(CLEAR_VARS)
 LOCAL_MODULE := init.weaved.rc
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
 
-ifdef INITRC_TEMPLATE
 include $(BUILD_SYSTEM)/base_rules.mk
 
-weaved_caps :=
+.PHONY: $(LOCAL_BUILT_MODULE)
 $(LOCAL_BUILT_MODULE): $(INITRC_TEMPLATE)
-	$(call generate-initrc-file,weaved,$(weaved_caps))
+	$(call generate-initrc-file,weaved,,)
 endif
 
 # buffet_testrunner
@@ -142,5 +153,37 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_conversion_unittest.cc \
 
 include $(BUILD_NATIVE_TEST)
+
+# Config files for /etc/buffet
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := base_state.defaults.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
+LOCAL_SRC_FILES := buffet/etc/buffet/base_state.defaults.json
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := base_state.schema.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
+LOCAL_SRC_FILES := buffet/etc/buffet/base_state.schema.json
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := gcd.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
+LOCAL_SRC_FILES := buffet/etc/buffet/gcd.json
+include $(BUILD_PREBUILT)
+
+# DBus config files for /etc/dbus-1
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := org.chromium.Buffet.conf
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/dbus-1
+LOCAL_SRC_FILES := buffet/etc/dbus-1/org.chromium.Buffet.conf
+include $(BUILD_PREBUILT)
 
 endif # HOST_OS == linux
