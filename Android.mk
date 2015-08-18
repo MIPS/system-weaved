@@ -97,17 +97,16 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_EXECUTABLE)
 
+ifdef INITRC_TEMPLATE
 include $(CLEAR_VARS)
 LOCAL_MODULE := init.weaved.rc
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
 
-ifdef INITRC_TEMPLATE
 include $(BUILD_SYSTEM)/base_rules.mk
 
-weaved_caps :=
 $(LOCAL_BUILT_MODULE): $(INITRC_TEMPLATE)
-	$(call generate-initrc-file,weaved,$(weaved_caps))
+	$(call generate-initrc-file,weaved)
 endif
 
 # buffet_testrunner
