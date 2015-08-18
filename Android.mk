@@ -44,10 +44,9 @@ buffetSharedLibraries := \
 	libchromeos-dbus \
 	libchromeos-http \
 	libchromeos-stream \
+	libconnectivity \
 	libdbus \
 	libweave \
-
-#	libconnectivity \
 
 # buffet-common
 # ========================================================
