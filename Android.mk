@@ -62,12 +62,14 @@ LOCAL_CLANG := true
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 
 LOCAL_SRC_FILES := \
+	buffet/buffet_config.cc \
 	buffet/dbus_command_dispatcher.cc \
 	buffet/dbus_command_proxy.cc \
 	buffet/dbus_conversion.cc \
 	buffet/dbus_constants.cc \
 	buffet/http_transport_client.cc \
 	buffet/manager.cc \
+	buffet/socket_stream.cc \
 
 #	buffet/dbus_bindings/org.chromium.Buffet.Command.xml \
 #	buffet/dbus_bindings/org.chromium.Buffet.Manager.xml \
@@ -106,7 +108,7 @@ LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
 include $(BUILD_SYSTEM)/base_rules.mk
 
 $(LOCAL_BUILT_MODULE): $(INITRC_TEMPLATE)
-	$(call generate-initrc-file,weaved)
+	$(call generate-initrc-file,weaved,,)
 endif
 
 # buffet_testrunner
