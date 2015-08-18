@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
                 "Path to file containing state information.");
   DEFINE_bool(enable_xmpp, true,
               "Connect to GCD via a persistent XMPP connection.");
-  DEFINE_bool(disable_privet, true, "disable Privet protocol");
+  DEFINE_bool(disable_privet, false, "disable Privet protocol");
   DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
   DEFINE_string(device_whitelist, "",
                 "Comma separated list of network interfaces to monitor for "
