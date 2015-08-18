@@ -29,13 +29,10 @@
 #include "buffet/dbus_command_dispatcher.h"
 #include "buffet/dbus_conversion.h"
 #include "buffet/http_transport_client.h"
-//#include "buffet/shill_client.h"
+#include "buffet/mdns_client.h"
+#include "buffet/network_client.h"
 #include "buffet/weave_error_conversion.h"
-
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-//#include "buffet/peerd_client.h"
 //#include "buffet/webserv_client.h"
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -77,16 +74,12 @@ void Manager::Start(const weave::Device::Options& options,
                     AsyncEventSequencer* sequencer) {
   task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
-//  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
-  weave::Mdns* mdns{nullptr};
-  weave::HttpServer* http_server{nullptr};
+  network_client_ = NetworkClient::CreateInstance(device_whitelist);
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-//  if (!options.disable_privet) {
-//    peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
-//    web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
-//    mdns = peerd_client_.get();
-//    http_server = web_serv_client_.get();
-//  }
+  if (!options.disable_privet) {
+    mdns_client_ = MdnsClient::CreateInstance();
+    //web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
+  }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
   device_ = weave::Device::Create();
@@ -95,7 +88,8 @@ void Manager::Start(const weave::Device::Options& options,
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
   device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
-                 nullptr /*shill_client_.get()*/, mdns, http_server);
+                 network_client_.get(), mdns_client_.get(),
+                 nullptr /*web_serv_client_.get()*/);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

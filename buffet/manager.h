@@ -33,8 +33,8 @@ namespace buffet {
 class BuffetConfig;
 class DBusCommandDispacher;
 class HttpTransportClient;
-//class PeerdClient;
-//class ShillClient;
+class MdnsClient;
+class NetworkClient;
 //class WebServClient;
 struct BuffetConfigPaths;
 
@@ -125,11 +125,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   class TaskRunner;
   std::unique_ptr<TaskRunner> task_runner_;
   std::unique_ptr<HttpTransportClient> http_client_;
-//  std::unique_ptr<ShillClient> shill_client_;
-#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-//  std::unique_ptr<PeerdClient> peerd_client_;
+  std::unique_ptr<NetworkClient> network_client_;
+  std::unique_ptr<MdnsClient> mdns_client_;
 //  std::unique_ptr<WebServClient> web_serv_client_;
-#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
   std::unique_ptr<BuffetConfig> config_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;

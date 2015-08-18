@@ -22,9 +22,9 @@ ifeq ($(HOST_OS),linux)
 # ========================================================
 
 buffetCommonCppExtension := .cc
-buffetCommonCFlags := -D__BRILLO__ -Wall -Werror \
+buffetCommonCFlags := -DBUFFET_USE_WIFI_BOOTSTRAPPING -Wall -Werror \
 	-Wno-char-subscripts -Wno-missing-field-initializers \
-	-Wno-unused-function -Wno-unused-parameter
+	-Wno-unused-function -Wno-unused-parameter \
 
 buffetCommonCppFlags := \
 	-Wno-deprecated-register \
@@ -46,6 +46,11 @@ buffetSharedLibraries := \
 	libchromeos-stream \
 	libdbus \
 	libweave \
+
+ifdef BRILLO
+buffetCommonCFlags += -D__BRILLO__
+buffetSharedLibraries += libconnectivity
+endif
 
 # buffet-common
 # ========================================================
@@ -71,12 +76,19 @@ LOCAL_SRC_FILES := \
 	buffet/manager.cc \
 	buffet/socket_stream.cc \
 
-#	buffet/dbus_bindings/org.chromium.Buffet.Command.xml \
-#	buffet/dbus_bindings/org.chromium.Buffet.Manager.xml \
-#	buffet/ap_manager_client.cc \
-#	buffet/peerd_client.cc \
-#	buffet/shill_client.cc \
-#	buffet/webserv_client.cc \
+ifdef BRILLO
+
+LOCAL_SRC_FILES += \
+	buffet/avahi_mdns_client.cc \
+	buffet/brillo_network_client.cc \
+
+else # BRILLO
+
+LOCAL_SRC_FILES += \
+	buffet/stub_mdns_client.cc \
+	buffet/stub_network_client.cc \
+
+endif # BRILLO
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -84,7 +96,16 @@ include $(BUILD_STATIC_LIBRARY)
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
-LOCAL_REQUIRED_MODULES := init.weaved.rc
+LOCAL_REQUIRED_MODULES := \
+	base_state.defaults.json \
+	base_state.schema.json \
+	gcd.json \
+	org.chromium.Buffet.conf \
+
+ifdef INITRC_TEMPLATE
+LOCAL_REQUIRED_MODULES += init.weaved.rc
+endif
+
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
@@ -143,5 +164,37 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_conversion_unittest.cc \
 
 include $(BUILD_NATIVE_TEST)
+
+# Config files for /etc/buffet
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := base_state.defaults.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
+LOCAL_SRC_FILES := buffet/etc/buffet/base_state.defaults.json
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := base_state.schema.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
+LOCAL_SRC_FILES := buffet/etc/buffet/base_state.schema.json
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := gcd.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
+LOCAL_SRC_FILES := buffet/etc/buffet/gcd.json
+include $(BUILD_PREBUILT)
+
+# DBus config files for /etc/dbus-1
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := org.chromium.Buffet.conf
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/dbus-1
+LOCAL_SRC_FILES := buffet/etc/dbus-1/org.chromium.Buffet.conf
+include $(BUILD_PREBUILT)
 
 endif # HOST_OS == linux
