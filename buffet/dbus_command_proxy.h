@@ -13,7 +13,7 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <weave/command.h>
 
-#include "buffet/org.chromium.Buffet.Command.h"
+#include "buffet/dbus_bindings/org.chromium.Buffet.Command.h"
 
 namespace chromeos {
 namespace dbus_utils {

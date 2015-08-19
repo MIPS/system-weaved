@@ -16,7 +16,7 @@
       'target_name': 'buffet_common',
       'type': 'static_library',
       'variables': {
-        'dbus_adaptors_out_dir': 'include/buffet',
+        'dbus_adaptors_out_dir': 'include/buffet/dbus_bindings',
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'exported_deps': [
           'libweave-<(libbase_ver)',

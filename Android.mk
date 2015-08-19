@@ -77,6 +77,9 @@ LOCAL_SRC_FILES := \
 	buffet/manager.cc \
 	buffet/socket_stream.cc \
 	buffet/webserv_client.cc \
+	buffet/dbus_bindings/dbus-service-config.json \
+	buffet/dbus_bindings/org.chromium.Buffet.Command.dbus.xml \
+	buffet/dbus_bindings/org.chromium.Buffet.Manager.dbus.xml \
 
 ifdef BRILLO
 
@@ -178,12 +181,15 @@ LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
 LOCAL_STATIC_LIBRARIES :=
-
+LOCAL_DBUS_PROXY_PREFIX := buffet
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
 	buffet/buffet_client.cc \
+	buffet/dbus_bindings/dbus-service-config.json \
+	buffet/dbus_bindings/org.chromium.Buffet.Command.dbus.xml \
+	buffet/dbus_bindings/org.chromium.Buffet.Manager.dbus.xml \
 
 include $(BUILD_EXECUTABLE)
 

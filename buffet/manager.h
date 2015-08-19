@@ -20,7 +20,7 @@
 #include <chromeos/errors/error.h>
 #include <weave/device.h>
 
-#include "buffet/org.chromium.Buffet.Manager.h"
+#include "buffet/dbus_bindings/org.chromium.Buffet.Manager.h"
 
 namespace chromeos {
 namespace dbus_utils {
