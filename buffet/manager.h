@@ -35,7 +35,7 @@ class DBusCommandDispacher;
 class HttpTransportClient;
 class MdnsClient;
 class NetworkClient;
-//class WebServClient;
+class WebServClient;
 struct BuffetConfigPaths;
 
 template<typename... Types>
@@ -127,7 +127,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::unique_ptr<HttpTransportClient> http_client_;
   std::unique_ptr<NetworkClient> network_client_;
   std::unique_ptr<MdnsClient> mdns_client_;
-//  std::unique_ptr<WebServClient> web_serv_client_;
+  std::unique_ptr<WebServClient> web_serv_client_;
   std::unique_ptr<BuffetConfig> config_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;

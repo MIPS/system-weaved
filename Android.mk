@@ -46,6 +46,7 @@ buffetSharedLibraries := \
 	libchromeos-stream \
 	libdbus \
 	libweave \
+	libwebserv \
 
 ifdef BRILLO
 buffetCommonCFlags += -D__BRILLO__
@@ -75,6 +76,7 @@ LOCAL_SRC_FILES := \
 	buffet/http_transport_client.cc \
 	buffet/manager.cc \
 	buffet/socket_stream.cc \
+	buffet/webserv_client.cc \
 
 ifdef BRILLO
 
@@ -101,6 +103,7 @@ LOCAL_REQUIRED_MODULES := \
 	base_state.schema.json \
 	gcd.json \
 	org.chromium.Buffet.conf \
+	webservd \
 
 ifdef INITRC_TEMPLATE
 LOCAL_REQUIRED_MODULES += init.weaved.rc
