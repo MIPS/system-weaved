@@ -168,6 +168,25 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_NATIVE_TEST)
 
+# weaved_client
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := weaved_client
+LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
+LOCAL_CFLAGS := $(buffetCommonCFlags)
+LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
+LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
+LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
+LOCAL_STATIC_LIBRARIES :=
+
+LOCAL_RTTI_FLAG := -frtti
+LOCAL_CLANG := true
+
+LOCAL_SRC_FILES := \
+	buffet/buffet_client.cc \
+
+include $(BUILD_EXECUTABLE)
+
 # Config files for /etc/buffet
 # ========================================================
 include $(CLEAR_VARS)
