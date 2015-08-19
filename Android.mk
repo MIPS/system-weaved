@@ -49,7 +49,6 @@ buffetSharedLibraries := \
 	libwebserv \
 
 ifdef BRILLO
-buffetCommonCFlags += -D__BRILLO__
 buffetSharedLibraries += libconnectivity
 endif
 
