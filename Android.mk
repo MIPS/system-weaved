@@ -103,6 +103,7 @@ LOCAL_MODULE := weaved
 LOCAL_REQUIRED_MODULES := \
 	base_state.defaults.json \
 	base_state.schema.json \
+	buffet.json \
 	gcd.json \
 	org.chromium.Buffet.conf \
 	webservd \
@@ -226,6 +227,13 @@ LOCAL_MODULE := gcd.json
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
 LOCAL_SRC_FILES := buffet/etc/buffet/gcd.json
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := buffet.json
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet/commands
+LOCAL_SRC_FILES := buffet/etc/buffet/commands/buffet.json
 include $(BUILD_PREBUILT)
 
 # DBus config files for /etc/dbus-1
