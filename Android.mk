@@ -137,6 +137,19 @@ $(LOCAL_BUILT_MODULE): $(INITRC_TEMPLATE)
 	$(call generate-initrc-file,weaved,,)
 endif
 
+# libweaved-client
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := libweaved-client
+LOCAL_DBUS_PROXY_PREFIX := buffet
+
+LOCAL_SRC_FILES := \
+	buffet/dbus_bindings/dbus-service-config.json \
+	buffet/dbus_bindings/org.chromium.Buffet.Command.dbus.xml \
+	buffet/dbus_bindings/org.chromium.Buffet.Manager.dbus.xml \
+
+include $(BUILD_SHARED_LIBRARY)
+
 # buffet_testrunner
 # ========================================================
 include $(CLEAR_VARS)
