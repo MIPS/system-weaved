@@ -28,7 +28,8 @@ void DBusCommandDispacher::OnCommandAdded(weave::Command* command) {
     return;
   std::unique_ptr<DBusCommandProxy> proxy{new DBusCommandProxy(
       object_manager_.get(), object_manager_->GetBus(), command,
-      buffet::kCommandServicePathPrefix + std::to_string(++next_id_))};
+      buffet::dbus_constants::kCommandServicePathPrefix +
+      std::to_string(++next_id_))};
   proxy->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   // DBusCommandProxy::DBusCommandProxy() subscribe itself to weave::Command
   // notifications. When weave::Command is being destroyed it sends

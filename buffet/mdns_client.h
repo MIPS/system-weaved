@@ -22,6 +22,8 @@
 #include <string>
 
 #include <base/guid.h>
+#include <base/memory/ref_counted.h>
+#include <dbus/bus.h>
 #include <weave/mdns.h>
 
 namespace buffet {
@@ -33,13 +35,15 @@ class MdnsClient : public weave::Mdns {
   ~MdnsClient() override = default;
 
   // weave::Mdns implementation.
-  void PublishService(const std::string& service_name,
+  void PublishService(const std::string& service_type,
                       uint16_t port,
-                      const std::map<std::string, std::string>& txt) override {}
-  void StopPublishing(const std::string& service_name) override {}
+                      const std::map<std::string, std::string>& txt) override {
+  };
+  void StopPublishing(const std::string& service_type) override {}
   std::string GetId() const override { return device_id_; }
 
-  static std::unique_ptr<MdnsClient> CreateInstance();
+  static std::unique_ptr<MdnsClient> CreateInstance(
+      const scoped_refptr<dbus::Bus> &bus);
 
  protected:
   // Cached value of the device ID that we got from peerd.

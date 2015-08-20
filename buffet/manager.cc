@@ -77,7 +77,7 @@ void Manager::Start(const weave::Device::Options& options,
   network_client_ = NetworkClient::CreateInstance(device_whitelist);
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options.disable_privet) {
-    mdns_client_ = MdnsClient::CreateInstance();
+    mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
     web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING

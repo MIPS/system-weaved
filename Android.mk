@@ -38,6 +38,7 @@ buffetCommonCIncludes := \
 	external/gtest/include \
 
 buffetSharedLibraries := \
+	libavahi-common \
 	libchrome \
 	libchrome-dbus \
 	libchromeos \
@@ -101,6 +102,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
 LOCAL_REQUIRED_MODULES := \
+	avahi-daemon \
 	base_state.defaults.json \
 	base_state.schema.json \
 	buffet.json \

@@ -82,7 +82,7 @@ class DBusCommandProxyTest : public ::testing::Test {
         .WillOnce(ReturnRefOfCopy<std::string>("{}"));
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
-    std::string cmd_path = buffet::kCommandServicePathPrefix;
+    std::string cmd_path = buffet::dbus_constants::kCommandServicePathPrefix;
     cmd_path += kTestCommandId;
     const dbus::ObjectPath kCmdObjPath(cmd_path);
     // Use a mock exported object for the exported object manager.

@@ -20,6 +20,8 @@
 #include <map>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+#include <dbus/bus.h>
 #include <weave/mdns.h>
 
 #include "buffet/mdns_client.h"
@@ -29,16 +31,61 @@ namespace buffet {
 // Publishes privet service on mDns using Avahi.
 class AvahiMdnsClient : public MdnsClient {
  public:
-  AvahiMdnsClient();
+  explicit AvahiMdnsClient(const scoped_refptr<dbus::Bus> &bus);
   ~AvahiMdnsClient() override;
 
   // weave::Mdns implementation.
-  void PublishService(const std::string& service_name,
+  void PublishService(const std::string& service_type,
                       uint16_t port,
                       const std::map<std::string, std::string>& txt) override;
-  void StopPublishing(const std::string& service_name) override;
+  void StopPublishing(const std::string& service_type) override;
 
  private:
+  using TxtRecord = std::vector<std::vector<uint8_t>>;
+
+  // States used to track progress of our asynchronous dbus operations.
+  typedef enum {
+    UNDEF,
+    PENDING,
+    READY,
+    ERROR
+  } AsyncState;
+
+  scoped_refptr<dbus::Bus> bus_;
+  dbus::ObjectProxy* avahi_{nullptr};
+  // The avahi interface we use to add/remove mdns services.
+  dbus::ObjectProxy* entry_group_{nullptr};
+
+  // State of our dbus connection to avahi.
+  AsyncState avahi_state_{UNDEF};
+  // State of the group/service publish operation.
+  AsyncState service_state_{UNDEF};
+
+  std::string service_name_;
+  std::string service_type_;
+  uint16_t port_{0};
+  TxtRecord txt_;
+
+  // Must be last member to invalidate pointers before actual destruction.
+  base::WeakPtrFactory<AvahiMdnsClient> weak_ptr_factory_{this};
+
+  // Convert a {string:string} text record into something we can send over
+  // dbus.
+  TxtRecord GetTxtRecord(const std::map<std::string, std::string>& txt);
+
+  void ConnectToAvahi();
+  void CreateEntryGroup();
+  void FreeEntryGroup();
+  void CreateService();
+
+  void OnAvahiOwnerChanged(const std::string& old_owner,
+                           const std::string& new_owner);
+  void OnAvahiStateChanged(int32_t state,
+                           const std::string& error);
+  void OnAvahiAvailable(bool avahi_is_on_dbus);
+  void HandleAvahiStateChange(int32_t state);
+  void HandleGroupStateChanged(int32_t state,
+                               const std::string& error_message);
   DISALLOW_COPY_AND_ASSIGN(AvahiMdnsClient);
 };
 

@@ -84,7 +84,7 @@ WebServClient::WebServClient(
       base::Bind(&WebServClient::OnProtocolHandlerDisconnected,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  web_server_->Connect(bus, buffet::kServiceName,
+  web_server_->Connect(bus, buffet::dbus_constants::kServiceName,
                        sequencer->GetHandler("Server::Connect failed.", true),
                        base::Bind(&base::DoNothing),
                        base::Bind(&base::DoNothing));
