@@ -106,11 +106,11 @@ class DBusCommandProxyTest : public ::testing::Test {
 
   DBusCommandProxy* GetCommandProxy() const { return proxy_.get(); }
 
-  org::chromium::Buffet::CommandAdaptor* GetCommandAdaptor() const {
+  com::android::Weave::CommandAdaptor* GetCommandAdaptor() const {
     return &GetCommandProxy()->dbus_adaptor_;
   }
 
-  org::chromium::Buffet::CommandInterface* GetCommandInterface() const {
+  com::android::Weave::CommandInterface* GetCommandInterface() const {
     // DBusCommandProxy also implements CommandInterface.
     return GetCommandProxy();
   }

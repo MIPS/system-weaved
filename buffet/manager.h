@@ -20,7 +20,7 @@
 #include <chromeos/errors/error.h>
 #include <weave/device.h>
 
-#include "buffet/dbus_bindings/org.chromium.Buffet.Manager.h"
+#include "buffet/dbus_bindings/com.android.Weave.Manager.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -49,7 +49,7 @@ using DBusMethodResponse =
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
 // device state.
-class Manager final : public org::chromium::Buffet::ManagerInterface {
+class Manager final : public com::android::Weave::ManagerInterface {
  public:
   explicit Manager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
@@ -119,7 +119,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
-  org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
+  com::android::Weave::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   class TaskRunner;

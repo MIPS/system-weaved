@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<node name="/org/chromium/Buffet/Manager"
+<node name="/com/android/Weave/Manager"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <interface name="org.chromium.Buffet.Manager">
+  <interface name="com.android.Weave.Manager">
     <tp:docstring>
       The Manager is responsible for global state of Buffet.  It exposes
       interfaces which affect the entire device such as device registration and
@@ -69,7 +69,7 @@
       <arg name="listener_path" type="o" direction="in">
         <tp:docstring>
           Path to an object exposed by the caller.  This object must support
-          the org.chromium.Buffet.WiFiBootstrapListener interface.
+          the com.android.Weave.WiFiBootstrapListener interface.
         </tp:docstring>
       </arg>
       <arg name="options" type="a{sv}" direction="in"/>

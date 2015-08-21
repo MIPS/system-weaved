@@ -6,8 +6,8 @@
 
 namespace buffet {
 
-const char kServiceName[] = "org.chromium.Buffet";
-const char kRootServicePath[] = "/org/chromium/Buffet";
-const char kCommandServicePathPrefix[] = "/org/chromium/Buffet/commands/";
+const char kServiceName[] = "com.android.Weave";
+const char kRootServicePath[] = "/com/android/Weave";
+const char kCommandServicePathPrefix[] = "/com/android/Weave/commands/";
 
 }  // namespace buffet

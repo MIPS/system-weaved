@@ -33,8 +33,8 @@
       'sources': [
         'ap_manager_client.cc',
         'buffet_config.cc',
-        'dbus_bindings/org.chromium.Buffet.Command.xml',
-        'dbus_bindings/org.chromium.Buffet.Manager.xml',
+        'dbus_bindings/com.android.Weave.Command.dbus.xml',
+        'dbus_bindings/com.android.Weave.Manager.dbus.xml',
         'dbus_command_dispatcher.cc',
         'dbus_command_proxy.cc',
         'dbus_conversion.cc',
@@ -71,8 +71,8 @@
             'proxy_output_file': 'include/buffet/dbus-proxies.h'
           },
           'sources': [
-            'dbus_bindings/org.chromium.Buffet.Command.xml',
-            'dbus_bindings/org.chromium.Buffet.Manager.xml',
+            'dbus_bindings/com.android.Weave.Command.dbus.xml',
+            'dbus_bindings/com.android.Weave.Manager.dbus.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
@@ -84,9 +84,9 @@
             'proxy_output_file': 'include/shill/dbus-proxies.h'
           },
           'sources': [
-            '../shill/dbus_bindings/org.chromium.flimflam.Device.xml',
-            '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
-            '../shill/dbus_bindings/org.chromium.flimflam.Service.xml',
+            '../shill/dbus_bindings/com.chromium.flimflam.Device.xml',
+            '../shill/dbus_bindings/com.chromium.flimflam.Manager.xml',
+            '../shill/dbus_bindings/com.chromium.flimflam.Service.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
@@ -98,10 +98,10 @@
             'proxy_output_file': 'include/apmanager/dbus-proxies.h'
           },
           'sources': [
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Config.xml',
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Device.xml',
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Manager.xml',
-            '../apmanager/dbus_bindings/org.chromium.apmanager.Service.xml',
+            '../apmanager/dbus_bindings/com.chromium.apmanager.Config.xml',
+            '../apmanager/dbus_bindings/com.chromium.apmanager.Device.xml',
+            '../apmanager/dbus_bindings/com.chromium.apmanager.Manager.xml',
+            '../apmanager/dbus_bindings/com.chromium.apmanager.Service.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },

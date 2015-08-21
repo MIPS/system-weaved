@@ -13,7 +13,7 @@
 #include <chromeos/dbus/dbus_object.h>
 #include <weave/command.h>
 
-#include "buffet/dbus_bindings/org.chromium.Buffet.Command.h"
+#include "buffet/dbus_bindings/com.android.Weave.Command.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -24,7 +24,7 @@ class ExportedObjectManager;
 namespace buffet {
 
 class DBusCommandProxy : public weave::Command::Observer,
-                         public org::chromium::Buffet::CommandInterface {
+                         public com::android::Weave::CommandInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
@@ -43,21 +43,21 @@ class DBusCommandProxy : public weave::Command::Observer,
   void OnCommandDestroyed() override;
 
  private:
-  // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).
+  // Handles calls to com.android.Weave.Command.SetProgress(progress).
   bool SetProgress(chromeos::ErrorPtr* error,
                    const chromeos::VariantDictionary& progress) override;
-  // Handles calls to org.chromium.Buffet.Command.SetResults(results).
+  // Handles calls to com.android.Weave.Command.SetResults(results).
   bool SetResults(chromeos::ErrorPtr* error,
                   const chromeos::VariantDictionary& results) override;
-  // Handles calls to org.chromium.Buffet.Command.Abort().
+  // Handles calls to com.android.Weave.Command.Abort().
   void Abort() override;
-  // Handles calls to org.chromium.Buffet.Command.Cancel().
+  // Handles calls to com.android.Weave.Command.Cancel().
   void Cancel() override;
-  // Handles calls to org.chromium.Buffet.Command.Done().
+  // Handles calls to com.android.Weave.Command.Done().
   void Done() override;
 
   weave::Command* command_;
-  org::chromium::Buffet::CommandAdaptor dbus_adaptor_{this};
+  com::android::Weave::CommandAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   ScopedObserver<weave::Command, weave::Command::Observer> observer_{this};

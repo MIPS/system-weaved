@@ -81,13 +81,13 @@ class Daemon final : public chromeos::DBusDaemon {
   void OnShutdown(int* return_code) override;
 
  private:
-  std::unique_ptr<org::chromium::Buffet::ObjectManagerProxy> object_manager_;
+  std::unique_ptr<com::android::Weave::ObjectManagerProxy> object_manager_;
 
-  void OnBuffetCommand(org::chromium::Buffet::CommandProxy* command);
+  void OnBuffetCommand(com::android::Weave::CommandProxy* command);
   void OnBuffetCommandRemoved(const dbus::ObjectPath& object_path);
-  void OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
+  void OnPropertyChange(com::android::Weave::CommandProxy* command,
                         const std::string& property_name);
-  void OnCommandProgress(org::chromium::Buffet::CommandProxy* command,
+  void OnCommandProgress(com::android::Weave::CommandProxy* command,
                          int progress);
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
@@ -98,7 +98,7 @@ int Daemon::OnInit() {
   if (return_code != EX_OK)
     return return_code;
 
-  object_manager_.reset(new org::chromium::Buffet::ObjectManagerProxy{bus_});
+  object_manager_.reset(new com::android::Weave::ObjectManagerProxy{bus_});
   object_manager_->SetCommandAddedCallback(
       base::Bind(&Daemon::OnBuffetCommand, base::Unretained(this)));
   object_manager_->SetCommandRemovedCallback(
@@ -112,7 +112,7 @@ void Daemon::OnShutdown(int* return_code) {
   printf("Shutting down...\n");
 }
 
-void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
+void Daemon::OnPropertyChange(com::android::Weave::CommandProxy* command,
                               const std::string& property_name) {
   printf("Notification: property '%s' on command '%s' changed.\n",
          property_name.c_str(), command->id().c_str());
@@ -123,7 +123,7 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
   printf("  Current command results: %s\n", results.c_str());
 }
 
-void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
+void Daemon::OnBuffetCommand(com::android::Weave::CommandProxy* command) {
   // "Handle" only commands that belong to this daemon's category.
   if (command->category() != kTestCommandCategory ||
       command->status() == "done") {
@@ -144,7 +144,7 @@ void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   OnCommandProgress(command, 0);
 }
 
-void Daemon::OnCommandProgress(org::chromium::Buffet::CommandProxy* command,
+void Daemon::OnCommandProgress(com::android::Weave::CommandProxy* command,
                                int progress) {
   printf("Updating command '%s' progress to %d%%\n", command->id().c_str(),
          progress);

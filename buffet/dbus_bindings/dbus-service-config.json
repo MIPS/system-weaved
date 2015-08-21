@@ -1,7 +1,7 @@
 {
-  "service_name": "org.chromium.Buffet",
+  "service_name": "com.android.Weave",
   "object_manager": {
-    "name": "org.chromium.Buffet.ObjectManager",
-    "object_path": "/org/chromium/Buffet"
+    "name": "com.android.Weave.ObjectManager",
+    "object_path": "/com/android/Weave"
   }
 }

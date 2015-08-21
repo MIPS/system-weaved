@@ -32,7 +32,7 @@
 
 using chromeos::Error;
 using chromeos::ErrorPtr;
-using org::chromium::Buffet::ManagerProxy;
+using com::android::Weave::ManagerProxy;
 
 namespace {
 
@@ -149,7 +149,7 @@ class Daemon final : public chromeos::DBusDaemon {
     if (return_code != EX_OK)
       return return_code;
 
-    object_manager_.reset(new org::chromium::Buffet::ObjectManagerProxy{bus_});
+    object_manager_.reset(new com::android::Weave::ObjectManagerProxy{bus_});
     return_code = ScheduleActions();
     if (return_code == EX_USAGE) {
       usage();
@@ -376,7 +376,7 @@ class Daemon final : public chromeos::DBusDaemon {
     OnJobComplete();
   }
 
-  std::unique_ptr<org::chromium::Buffet::ObjectManagerProxy> object_manager_;
+  std::unique_ptr<com::android::Weave::ObjectManagerProxy> object_manager_;
   int exit_code_{EX_OK};
   base::CancelableCallback<void()> timeout_task_;
 

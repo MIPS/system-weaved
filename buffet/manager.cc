@@ -62,7 +62,7 @@ class Manager::TaskRunner : public weave::TaskRunner {
 Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
     : dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
-                   org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {
+                   com::android::Weave::ManagerAdaptor::GetObjectPath()) {
 }
 
 Manager::~Manager() {

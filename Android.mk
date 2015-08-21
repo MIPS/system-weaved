@@ -77,8 +77,8 @@ LOCAL_SRC_FILES := \
 	buffet/socket_stream.cc \
 	buffet/webserv_client.cc \
 	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/org.chromium.Buffet.Command.dbus.xml \
-	buffet/dbus_bindings/org.chromium.Buffet.Manager.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Command.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Manager.dbus.xml \
 
 ifdef BRILLO
 
@@ -104,8 +104,8 @@ LOCAL_REQUIRED_MODULES := \
 	base_state.defaults.json \
 	base_state.schema.json \
 	buffet.json \
+	com.android.Weave.conf \
 	gcd.json \
-	org.chromium.Buffet.conf \
 	webservd \
 
 ifdef INITRC_TEMPLATE
@@ -147,8 +147,8 @@ LOCAL_DBUS_PROXY_PREFIX := buffet
 
 LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/org.chromium.Buffet.Command.dbus.xml \
-	buffet/dbus_bindings/org.chromium.Buffet.Manager.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Command.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Manager.dbus.xml \
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -202,8 +202,8 @@ LOCAL_CLANG := true
 LOCAL_SRC_FILES := \
 	buffet/buffet_client.cc \
 	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/org.chromium.Buffet.Command.dbus.xml \
-	buffet/dbus_bindings/org.chromium.Buffet.Manager.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Command.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Manager.dbus.xml \
 
 include $(BUILD_EXECUTABLE)
 
@@ -240,10 +240,10 @@ include $(BUILD_PREBUILT)
 # DBus config files for /etc/dbus-1
 # ========================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE := org.chromium.Buffet.conf
+LOCAL_MODULE := com.android.Weave.conf
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/dbus-1
-LOCAL_SRC_FILES := buffet/etc/dbus-1/org.chromium.Buffet.conf
+LOCAL_SRC_FILES := buffet/etc/dbus-1/com.android.Weave.conf
 include $(BUILD_PREBUILT)
 
 endif # HOST_OS == linux
