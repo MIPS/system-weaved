@@ -108,11 +108,8 @@ LOCAL_REQUIRED_MODULES := \
 	buffet.json \
 	com.android.Weave.conf \
 	gcd.json \
+	init.weaved.rc \
 	webservd \
-
-ifdef INITRC_TEMPLATE
-LOCAL_REQUIRED_MODULES += init.weaved.rc
-endif
 
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
@@ -127,19 +124,6 @@ LOCAL_SRC_FILES := \
 	buffet/main.cc
 
 include $(BUILD_EXECUTABLE)
-
-ifdef INITRC_TEMPLATE
-include $(CLEAR_VARS)
-LOCAL_MODULE := init.weaved.rc
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
-
-include $(BUILD_SYSTEM)/base_rules.mk
-
-.PHONY: $(LOCAL_BUILT_MODULE)
-$(LOCAL_BUILT_MODULE): $(INITRC_TEMPLATE)
-	$(call generate-initrc-file,weaved,,inet)
-endif
 
 # libweaved-client
 # ========================================================
@@ -208,6 +192,17 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
 include $(BUILD_EXECUTABLE)
+
+# init.weaved.rc (Brillo only)
+# ========================================================
+ifdef TARGET_COPY_OUT_INITRCD
+include $(CLEAR_VARS)
+LOCAL_MODULE := init.weaved.rc
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
+LOCAL_SRC_FILES := $(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
+endif
 
 # Config files for /etc/weaved
 # ========================================================
