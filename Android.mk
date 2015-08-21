@@ -134,8 +134,9 @@ LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
 
 include $(BUILD_SYSTEM)/base_rules.mk
 
+.PHONY: $(LOCAL_BUILT_MODULE)
 $(LOCAL_BUILT_MODULE): $(INITRC_TEMPLATE)
-	$(call generate-initrc-file,weaved,,)
+	$(call generate-initrc-file,weaved,,inet)
 endif
 
 # libweaved-client
