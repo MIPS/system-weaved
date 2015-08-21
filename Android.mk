@@ -207,34 +207,34 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_EXECUTABLE)
 
-# Config files for /etc/buffet
+# Config files for /etc/weaved
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := base_state.defaults.json
 LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
-LOCAL_SRC_FILES := buffet/etc/buffet/base_state.defaults.json
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved
+LOCAL_SRC_FILES := buffet/etc/weaved/base_state.defaults.json
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := base_state.schema.json
 LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
-LOCAL_SRC_FILES := buffet/etc/buffet/base_state.schema.json
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved
+LOCAL_SRC_FILES := buffet/etc/weaved/base_state.schema.json
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := gcd.json
 LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet
-LOCAL_SRC_FILES := buffet/etc/buffet/gcd.json
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved
+LOCAL_SRC_FILES := buffet/etc/weaved/gcd.json
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := buffet.json
 LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/buffet/commands
-LOCAL_SRC_FILES := buffet/etc/buffet/commands/buffet.json
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved/commands
+LOCAL_SRC_FILES := buffet/etc/weaved/commands/buffet.json
 include $(BUILD_PREBUILT)
 
 # DBus config files for /etc/dbus-1

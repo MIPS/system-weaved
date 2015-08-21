@@ -54,8 +54,8 @@ class Daemon final : public DBusServiceDaemon {
 
 namespace {
 
-const char kDefaultConfigFilePath[] = "/etc/buffet/buffet.conf";
-const char kDefaultStateFilePath[] = "/var/lib/buffet/device_reg_info";
+const char kDefaultConfigFilePath[] = "/etc/weaved/weaved.conf";
+const char kDefaultStateFilePath[] = "/var/lib/weaved/device_reg_info";
 
 }  // namespace
 
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
   buffet::BuffetConfigPaths paths;
   paths.defaults = base::FilePath{FLAGS_config_path};
   paths.settings = base::FilePath{FLAGS_state_path};
-  paths.definitions = base::FilePath{"/etc/buffet"};
+  paths.definitions = base::FilePath{"/etc/weaved"};
   paths.test_definitions = base::FilePath{FLAGS_test_definitions_path};
 
   weave::Device::Options options;
