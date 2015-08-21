@@ -77,8 +77,8 @@ LOCAL_SRC_FILES := \
 	buffet/socket_stream.cc \
 	buffet/webserv_client.cc \
 	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/com.android.Weave.Command.dbus.xml \
-	buffet/dbus_bindings/com.android.Weave.Manager.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
+	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
 ifdef BRILLO
 
@@ -147,8 +147,8 @@ LOCAL_DBUS_PROXY_PREFIX := buffet
 
 LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/com.android.Weave.Command.dbus.xml \
-	buffet/dbus_bindings/com.android.Weave.Manager.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
+	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -202,8 +202,8 @@ LOCAL_CLANG := true
 LOCAL_SRC_FILES := \
 	buffet/buffet_client.cc \
 	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/com.android.Weave.Command.dbus.xml \
-	buffet/dbus_bindings/com.android.Weave.Manager.dbus.xml \
+	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
+	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
 include $(BUILD_EXECUTABLE)
 

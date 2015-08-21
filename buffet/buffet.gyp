@@ -33,8 +33,8 @@
       'sources': [
         'ap_manager_client.cc',
         'buffet_config.cc',
-        'dbus_bindings/com.android.Weave.Command.dbus.xml',
-        'dbus_bindings/com.android.Weave.Manager.dbus.xml',
+        'dbus_bindings/com.android.Weave.Command.dbus-xml',
+        'dbus_bindings/com.android.Weave.Manager.dbus-xml',
         'dbus_command_dispatcher.cc',
         'dbus_command_proxy.cc',
         'dbus_conversion.cc',
@@ -71,8 +71,8 @@
             'proxy_output_file': 'include/buffet/dbus-proxies.h'
           },
           'sources': [
-            'dbus_bindings/com.android.Weave.Command.dbus.xml',
-            'dbus_bindings/com.android.Weave.Manager.dbus.xml',
+            'dbus_bindings/com.android.Weave.Command.dbus-xml',
+            'dbus_bindings/com.android.Weave.Manager.dbus-xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
