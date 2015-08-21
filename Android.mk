@@ -105,7 +105,7 @@ LOCAL_REQUIRED_MODULES := \
 	avahi-daemon \
 	base_state.defaults.json \
 	base_state.schema.json \
-	buffet.json \
+	weaved.json \
 	com.android.Weave.conf \
 	gcd.json \
 	init.weaved.rc \
@@ -228,10 +228,10 @@ LOCAL_SRC_FILES := buffet/etc/weaved/gcd.json
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := buffet.json
+LOCAL_MODULE := weaved.json
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved/commands
-LOCAL_SRC_FILES := buffet/etc/weaved/commands/buffet.json
+LOCAL_SRC_FILES := buffet/etc/weaved/commands/weaved.json
 include $(BUILD_PREBUILT)
 
 # DBus config files for /etc/dbus-1
