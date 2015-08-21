@@ -43,7 +43,7 @@ class MdnsClient : public weave::Mdns {
   std::string GetId() const override { return device_id_; }
 
   static std::unique_ptr<MdnsClient> CreateInstance(
-      const scoped_refptr<dbus::Bus> &bus);
+      const scoped_refptr<dbus::Bus>& bus);
 
  protected:
   // Cached value of the device ID that we got from peerd.
