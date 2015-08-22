@@ -31,7 +31,7 @@ namespace buffet {
 // Publishes privet service on mDns using Avahi.
 class AvahiMdnsClient : public MdnsClient {
  public:
-  explicit AvahiMdnsClient(const scoped_refptr<dbus::Bus> &bus);
+  explicit AvahiMdnsClient(const scoped_refptr<dbus::Bus>& bus);
   ~AvahiMdnsClient() override;
 
   // weave::Mdns implementation.
@@ -44,12 +44,12 @@ class AvahiMdnsClient : public MdnsClient {
   using TxtRecord = std::vector<std::vector<uint8_t>>;
 
   // States used to track progress of our asynchronous dbus operations.
-  typedef enum {
+  enum AsyncState {
     UNDEF,
     PENDING,
     READY,
     ERROR
-  } AsyncState;
+  };
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* avahi_{nullptr};
@@ -61,7 +61,6 @@ class AvahiMdnsClient : public MdnsClient {
   // State of the group/service publish operation.
   AsyncState service_state_{UNDEF};
 
-  std::string service_name_;
   std::string service_type_;
   uint16_t port_{0};
   TxtRecord txt_;

@@ -38,8 +38,8 @@ using CompletionAction =
 
 namespace buffet {
 
-AvahiMdnsClient::AvahiMdnsClient(const scoped_refptr<dbus::Bus> &bus):
-    bus_(bus) {
+AvahiMdnsClient::AvahiMdnsClient(const scoped_refptr<dbus::Bus> &bus)
+    : bus_(bus) {
 }
 
 AvahiMdnsClient::~AvahiMdnsClient() {
@@ -69,7 +69,6 @@ void AvahiMdnsClient::PublishService(
     }
   }
 
-  service_name_ = base::GenerateGUID();
   service_type_ = service_type;
   port_ = port;
   txt_ = GetTxtRecord(txt);
@@ -77,7 +76,7 @@ void AvahiMdnsClient::PublishService(
   if (avahi_state_ == UNDEF || avahi_state_ == ERROR) {
     ConnectToAvahi();
   } else if (avahi_state_ == READY) {
-    CreateService();
+    CreateEntryGroup();
   } else {
     CHECK(avahi_state_ == PENDING);
   }
@@ -95,7 +94,6 @@ void AvahiMdnsClient::StopPublishing(const std::string& service_type) {
     LOG(ERROR) << "Service is not published.";
   }
 
-  service_name_.clear();
   service_type_.clear();
   port_ = 0;
 
@@ -179,7 +177,7 @@ void AvahiMdnsClient::CreateEntryGroup() {
   entry_group_ = bus_->GetObjectProxy(dbus_constants::avahi::kServiceName,
                                       group_path);
 
-  // If we fail to connect to the the StateChange signal for this group, just
+  // If we fail to connect to the StateChange signal for this group, just
   // report that the whole thing has failed.
   auto on_connect_cb = [](const std::string& interface_name,
                           const std::string& signal_name,
@@ -199,8 +197,7 @@ void AvahiMdnsClient::CreateEntryGroup() {
                  weak_ptr_factory_.GetWeakPtr()),
       base::Bind(on_connect_cb));
 
-  if (!service_name_.empty())
-    CreateService();
+  CreateService();
 }
 
 void AvahiMdnsClient::FreeEntryGroup() {
@@ -232,9 +229,8 @@ void AvahiMdnsClient::CreateService() {
 
   CHECK_EQ(service_type_, "privet");
 
-  VLOG(1) << "CreateService: name " << service_name_ << ", type: " <<
+  VLOG(1) << "CreateService: name " << device_id_ << ", type: " <<
       service_type_ << ", port: " << port_;
-
   auto resp = CallMethodAndBlock(
       entry_group_,
       dbus_constants::avahi::kGroupInterface,
@@ -243,7 +239,7 @@ void AvahiMdnsClient::CreateService() {
       int32_t{AVAHI_IF_UNSPEC},
       int32_t{AVAHI_PROTO_UNSPEC},
       uint32_t{0},  // No flags.
-      service_name_,
+      device_id_,
       // For historical purposes, we convert the string "privet" into a proper
       // mdns service type.  Everyone else should just pass a proper service
       // type.
@@ -311,8 +307,7 @@ void AvahiMdnsClient::HandleAvahiStateChange(int32_t state) {
         return;
       }
       avahi_state_ = READY;
-      if (!service_name_.empty())
-        CreateEntryGroup();
+      CreateEntryGroup();
     } break;
     case AVAHI_SERVER_INVALID:
       // Invalid state (initial).
