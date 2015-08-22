@@ -55,7 +55,7 @@ class Daemon final : public DBusServiceDaemon {
 namespace {
 
 const char kDefaultConfigFilePath[] = "/etc/weaved/weaved.conf";
-const char kDefaultStateFilePath[] = "/var/lib/weaved/device_reg_info";
+const char kDefaultStateFilePath[] = "/data/misc/weaved/device_reg_info";
 
 }  // namespace
 
