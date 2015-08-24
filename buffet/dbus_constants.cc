@@ -30,6 +30,7 @@ const char kGroupMethodAddRecord[] = "AddRecord";
 const char kGroupMethodAddService[] = "AddService";
 const char kGroupMethodCommit[] = "Commit";
 const char kGroupMethodFree[] = "Free";
+const char kGroupMethodUpdateServiceTxt[] = "UpdateServiceTxt";
 const char kGroupMethodReset[]= "Reset";
 const char kGroupSignalStateChanged[] = "StateChanged";
 

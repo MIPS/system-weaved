@@ -47,6 +47,7 @@ extern const char kServiceBrowserSignalFailure[];
 
 extern const char kServiceResolverInterface[];
 extern const char kServiceResolverMethodFree[];
+extern const char kGroupMethodUpdateServiceTxt[];
 extern const char kServiceResolverSignalFound[];
 extern const char kServiceResolverSignalFailure[];
 

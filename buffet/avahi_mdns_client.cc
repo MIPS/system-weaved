@@ -59,13 +59,17 @@ void AvahiMdnsClient::PublishService(
     uint16_t port,
     const std::map<std::string, std::string>& txt) {
 
+  CHECK_EQ("privet", service_type);
+
   if (service_state_ == READY) {
-    // TODO(rginda): Instead of stop/start, we should update the existing
-    // service when only the txt record changes.
-    StopPublishing(service_type);
-    if (service_state_ != UNDEF) {
-      LOG(ERROR) << "Failed to disable existing service.";
-      return;
+    if (service_type_ != service_type || port_ != port) {
+      // If the type or port of a service changes we have to re-publish
+      // rather than just update the txt record.
+      StopPublishing(service_type_);
+      if (service_state_ != UNDEF) {
+        LOG(ERROR) << "Failed to disable existing service.";
+        return;
+      }
     }
   }
 
@@ -75,6 +79,8 @@ void AvahiMdnsClient::PublishService(
 
   if (avahi_state_ == UNDEF || avahi_state_ == ERROR) {
     ConnectToAvahi();
+  } else if (service_state_ == READY) {
+    UpdateServiceTxt();
   } else if (avahi_state_ == READY) {
     CreateEntryGroup();
   } else {
@@ -85,7 +91,7 @@ void AvahiMdnsClient::PublishService(
 // TODO(rginda): If we support publishing more than one service then we
 // may need a less ambiguous way of unpublishing them.
 void AvahiMdnsClient::StopPublishing(const std::string& service_type) {
-  if (service_type_.compare(service_type) != 0) {
+  if (service_type_ != service_type) {
     LOG(ERROR) << "Unknown service type: " << service_type;
     return;
   }
@@ -227,9 +233,7 @@ void AvahiMdnsClient::FreeEntryGroup() {
 void AvahiMdnsClient::CreateService() {
   ErrorPtr error;
 
-  CHECK_EQ(service_type_, "privet");
-
-  VLOG(1) << "CreateService: name " << device_id_ << ", type: " <<
+  VLOG(1) << "CreateService: name: " << device_id_ << ", type: " <<
       service_type_ << ", port: " << port_;
   auto resp = CallMethodAndBlock(
       entry_group_,
@@ -240,10 +244,7 @@ void AvahiMdnsClient::CreateService() {
       int32_t{AVAHI_PROTO_UNSPEC},
       uint32_t{0},  // No flags.
       device_id_,
-      // For historical purposes, we convert the string "privet" into a proper
-      // mdns service type.  Everyone else should just pass a proper service
-      // type.
-      service_type_.compare("privet") == 0 ? "_privet._tcp" : service_type_,
+      std::string{"_privet._tcp"},
       std::string{},  // domain.
       std::string{},  // hostname
       port_,
@@ -266,6 +267,32 @@ void AvahiMdnsClient::CreateService() {
 
   service_state_ = READY;
 }
+
+void AvahiMdnsClient::UpdateServiceTxt() {
+  ErrorPtr error;
+
+  CHECK_EQ(READY, service_state_);
+
+  VLOG(1) << "UpdateServiceTxt: name " << device_id_ << ", type: " <<
+      service_type_ << ", port: " << port_;
+  auto resp = CallMethodAndBlock(
+      entry_group_,
+      dbus_constants::avahi::kGroupInterface,
+      dbus_constants::avahi::kGroupMethodUpdateServiceTxt,
+      &error,
+      int32_t{AVAHI_IF_UNSPEC},
+      int32_t{AVAHI_PROTO_UNSPEC},
+      uint32_t{0},  // No flags.
+      device_id_,
+      std::string{"_privet._tcp"},
+      std::string{},  // domain.
+      txt_);
+  if (!resp || !ExtractMethodCallResults(resp.get(), &error)) {
+    LOG(ERROR) << "Error creating service";
+    service_state_ = ERROR;
+    return;
+  }
+};
 
 void AvahiMdnsClient::OnAvahiOwnerChanged(const std::string& old_owner,
                                           const std::string& new_owner) {
@@ -319,6 +346,9 @@ void AvahiMdnsClient::HandleAvahiStateChange(int32_t state) {
     case AVAHI_SERVER_FAILURE:
       // Some fatal failure happened, the server is unable to proceed.
       avahi_state_ = ERROR;
+      if (service_state_ != UNDEF)
+        service_state_ = ERROR;
+
       LOG(ERROR) << "Avahi changed to error state: " << state;
       break;
     default:

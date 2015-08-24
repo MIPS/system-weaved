@@ -76,6 +76,7 @@ class AvahiMdnsClient : public MdnsClient {
   void CreateEntryGroup();
   void FreeEntryGroup();
   void CreateService();
+  void UpdateServiceTxt();
 
   void OnAvahiOwnerChanged(const std::string& old_owner,
                            const std::string& new_owner);
