@@ -22,9 +22,11 @@
 #include <string>
 
 #include <base/cancelable_callback.h>
+#include <chromeos/errors/error_codes.h>
 #include <weave/network.h>
 
 #include "buffet/socket_stream.h"
+#include "buffet/weave_error_conversion.h"
 
 namespace buffet {
 
@@ -58,17 +60,21 @@ class NetworkClient : public weave::Network {
   void DisableAccessPoint() override {
   }
 
-  std::unique_ptr<weave::Stream> OpenSocketBlocking(const std::string& host,
-                                                    uint16_t port) override {
-    return SocketStream::ConnectBlocking(host, port);
-  }
-
-  void CreateTlsStream(
-      std::unique_ptr<weave::Stream> socket,
+  void OpenSslSocket(
       const std::string& host,
+      uint16_t port,
       const base::Callback<void(std::unique_ptr<weave::Stream>)>& on_success,
       const base::Callback<void(const weave::Error*)>& on_error) override {
-    SocketStream::TlsConnect(std::move(socket), host, on_success, on_error);
+    auto socket = SocketStream::ConnectBlocking(host, port);
+    if (socket) {
+      SocketStream::TlsConnect(std::move(socket), host, on_success, on_error);
+      return;
+    }
+    chromeos::ErrorPtr error;
+    chromeos::errors::system::AddSystemError(&error, FROM_HERE, errno);
+    weave::ErrorPtr weave_error;
+    ConvertError(*error.get(), &weave_error);
+    on_error.Run(weave_error.get());
   }
 
   static std::unique_ptr<NetworkClient> CreateInstance(

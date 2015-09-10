@@ -35,9 +35,8 @@ class AvahiMdnsClient : public MdnsClient {
   ~AvahiMdnsClient() override;
 
   // weave::Mdns implementation.
-  void PublishService(const std::string& service_type,
-                      uint16_t port,
-                      const std::map<std::string, std::string>& txt) override;
+  void PublishService(const std::string& service_type, uint16_t port,
+                      const std::vector<std::string>& txt) override;
   void StopPublishing(const std::string& service_type) override;
 
  private:
@@ -70,7 +69,7 @@ class AvahiMdnsClient : public MdnsClient {
 
   // Convert a {string:string} text record into something we can send over
   // dbus.
-  TxtRecord GetTxtRecord(const std::map<std::string, std::string>& txt);
+  static TxtRecord GetTxtRecord(const std::vector<std::string>& txt);
 
   void ConnectToAvahi();
   void CreateEntryGroup();

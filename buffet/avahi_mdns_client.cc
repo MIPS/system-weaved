@@ -55,11 +55,10 @@ std::unique_ptr<MdnsClient> MdnsClient::CreateInstance(
 // TODO(rginda): Report errors back to the caller.
 // TODO(rginda): Support publishing more than one service.
 void AvahiMdnsClient::PublishService(
-    const std::string& service_type,
-    uint16_t port,
-    const std::map<std::string, std::string>& txt) {
+    const std::string& service_type, uint16_t port,
+    const std::vector<std::string>& txt) {
 
-  CHECK_EQ("privet", service_type);
+  CHECK_EQ("_privet._tcp", service_type);
 
   if (service_state_ == READY) {
     if (service_type_ != service_type || port_ != port) {
@@ -115,16 +114,13 @@ void AvahiMdnsClient::StopPublishing(const std::string& service_type) {
 // We need a DBus type of "aay", which is a vector<vector<uint8_t>> in our
 // bindings.
 AvahiMdnsClient::TxtRecord AvahiMdnsClient::GetTxtRecord(
-    const std::map<std::string, std::string>& txt) {
+    const std::vector<std::string>& txt) {
   TxtRecord result;
   result.reserve(txt.size());
-  for (const auto& kv : txt) {
+  for (const std::string& s : txt) {
     result.emplace_back();
     std::vector<uint8_t>& record = result.back();
-    record.reserve(kv.first.length() + kv.second.length() + 1);
-    record.insert(record.end(), kv.first.begin(), kv.first.end());
-    record.push_back('=');
-    record.insert(record.end(), kv.second.begin(), kv.second.end());
+    record.insert(record.end(), s.begin(), s.end());
   }
   return result;
 }
