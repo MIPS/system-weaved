@@ -108,13 +108,13 @@ LOCAL_REQUIRED_MODULES := \
 	weaved.json \
 	com.android.Weave.conf \
 	gcd.json \
-	init.weaved.rc \
 	webservd \
 
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
+LOCAL_INIT_RC := init.weaved.rc
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
 LOCAL_WHOLE_STATIC_LIBRARIES := buffet-common
 LOCAL_CLANG := true
@@ -192,17 +192,6 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
 include $(BUILD_EXECUTABLE)
-
-# init.weaved.rc (Brillo only)
-# ========================================================
-ifdef TARGET_COPY_OUT_INITRCD
-include $(CLEAR_VARS)
-LOCAL_MODULE := init.weaved.rc
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)/$(TARGET_COPY_OUT_INITRCD)
-LOCAL_SRC_FILES := $(LOCAL_MODULE)
-include $(BUILD_PREBUILT)
-endif
 
 # Config files for /etc/weaved
 # ========================================================
