@@ -25,6 +25,7 @@
 #include <dbus/values_util.h>
 #include <weave/enum_to_string.h>
 
+#include "buffet/bluetooth_client.h"
 #include "buffet/buffet_config.h"
 #include "buffet/dbus_command_dispatcher.h"
 #include "buffet/dbus_conversion.h"
@@ -79,6 +80,7 @@ void Manager::Start(const weave::Device::Options& options,
   if (!options.disable_privet) {
     mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
     web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
+    bluetooth_client_ = BluetoothClient::CreateInstance();
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
@@ -89,7 +91,7 @@ void Manager::Start(const weave::Device::Options& options,
 
   device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
                  network_client_.get(), mdns_client_.get(),
-                 web_serv_client_.get(), nullptr);
+                 web_serv_client_.get(), bluetooth_client_.get());
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
