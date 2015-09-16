@@ -89,7 +89,7 @@ void Manager::Start(const weave::Device::Options& options,
 
   device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
                  network_client_.get(), mdns_client_.get(),
-                 web_serv_client_.get());
+                 web_serv_client_.get(), nullptr);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
