@@ -30,6 +30,7 @@ const int kConnectionInactivePollSeconds = 10;
 BrilloNetworkClient::BrilloNetworkClient(
     const std::set<std::string>& device_whitelist)
     : NetworkClient{device_whitelist}, state_(weave::NetworkState::kOffline) {
+  UpdateConnectionState();
 }
 
 BrilloNetworkClient::~BrilloNetworkClient() {
