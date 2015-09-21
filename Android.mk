@@ -86,7 +86,7 @@ ifdef BRILLO
 LOCAL_SRC_FILES += \
 	buffet/avahi_mdns_client.cc \
 	buffet/brillo_network_client.cc \
-	buffet/stub_bluetooth_client.cc \
+	buffet/flouride_socket_bluetooth_client.cc \
 
 else # BRILLO
 
