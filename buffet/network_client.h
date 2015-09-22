@@ -24,13 +24,14 @@
 #include <base/cancelable_callback.h>
 #include <chromeos/errors/error_codes.h>
 #include <weave/network.h>
+#include <weave/wifi.h>
 
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
 
 namespace buffet {
 
-class NetworkClient : public weave::Network {
+class NetworkClient : public weave::Network, public weave::Wifi {
  public:
   explicit NetworkClient(const std::set<std::string>& device_whitelist)
       : device_whitelist_{device_whitelist} {
@@ -43,11 +44,11 @@ class NetworkClient : public weave::Network {
       const OnConnectionChangedCallback& listener) override {
   }
 
-  bool ConnectToService(const std::string& ssid,
-                        const std::string& passphrase,
-                        const base::Closure& on_success,
-                        weave::ErrorPtr* error) override {
-    return true;
+  void ConnectToService(
+      const std::string& ssid,
+      const std::string& passphrase,
+      const base::Closure& on_success,
+      const base::Callback<void(const weave::Error*)>& on_error) override {
   }
 
   weave::NetworkState GetConnectionState() const override {

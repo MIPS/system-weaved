@@ -37,10 +37,11 @@ class BrilloNetworkClient : public NetworkClient {
   // Implements the Network interface.
   void AddOnConnectionChangedCallback(
       const OnConnectionChangedCallback& listener) override;
-  bool ConnectToService(const std::string& ssid,
-                        const std::string& passphrase,
-                        const base::Closure& on_success,
-                        weave::ErrorPtr* error) override;
+  void ConnectToService(
+      const std::string& ssid,
+      const std::string& passphrase,
+      const base::Closure& on_success,
+      const base::Callback<void(const weave::Error*)>& on_error) override;
   weave::NetworkState GetConnectionState() const override;
   void EnableAccessPoint(const std::string& ssid) override;
   void DisableAccessPoint() override;

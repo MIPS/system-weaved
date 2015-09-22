@@ -21,7 +21,7 @@
 namespace buffet {
 
 namespace {
-const char kErrorCommandFailed[] = "commandFailed";
+const char kErrorDomain[] = "brillo_network";
 const int kConnectionTimeoutSeconds = 30;
 const int kConnectionActivePollSeconds = 3;
 const int kConnectionInactivePollSeconds = 10;
@@ -41,13 +41,18 @@ void BrilloNetworkClient::AddOnConnectionChangedCallback(
   connection_listeners_.push_back(listener);
 }
 
-bool BrilloNetworkClient::ConnectToService(const std::string& ssid,
-                                           const std::string& passphrase,
-                                           const base::Closure& on_success,
-                                           weave::ErrorPtr* error) {
+void BrilloNetworkClient::ConnectToService(
+    const std::string& ssid,
+    const std::string& passphrase,
+    const base::Closure& on_success,
+    const base::Callback<void(const weave::Error*)>& on_error) {
   if (!connectivity_client_.ConnectToAccessPoint(ssid, passphrase)) {
-    weave::Error::AddTo(error, FROM_HERE, kErrorCommandFailed, "", "");
-    return false;
+    weave::ErrorPtr error;
+    weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "network_failure",
+                        "Failed to connect to service");
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, base::Bind(on_error, base::Owned(error.release())), {});
+    return;
   }
 
   connection_success_closure_ = on_success;
@@ -62,8 +67,6 @@ bool BrilloNetworkClient::ConnectToService(const std::string& ssid,
       base::TimeDelta::FromSeconds(kConnectionTimeoutSeconds));
 
   ScheduleNextStatePoll();
-
-  return true;
 }
 
 weave::NetworkState BrilloNetworkClient::GetConnectionState() const {
@@ -112,7 +115,7 @@ void BrilloNetworkClient::UpdateConnectionState() {
   }
   if (is_connected != was_connected) {
     for (const auto& listener : connection_listeners_) {
-      listener.Run(is_connected);
+      listener.Run();
     }
   }
   ScheduleNextStatePoll();
