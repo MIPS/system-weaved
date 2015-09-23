@@ -130,7 +130,7 @@ void WebServClient::OnResponse(std::unique_ptr<libwebserv::Response> response,
                                int status_code,
                                const std::string& data,
                                const std::string& mime_type) {
-  response->Reply(status_code, data.data(), data.size(), mime_type);
+  response->ReplyWithText(status_code, data, mime_type);
 }
 
 void WebServClient::OnProtocolHandlerConnected(
