@@ -34,7 +34,7 @@ class RequestImpl : public weave::HttpServer::Request {
   // TODO(avakulenko): Remove this method and rewrite all call sites in libweave
   // to use GetDataStream() instead.
   const std::vector<uint8_t>& GetData() const override {
-    if (!request_data_)
+    if (request_data_)
       return *request_data_;
 
     request_data_.reset(new std::vector<uint8_t>);
