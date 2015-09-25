@@ -24,12 +24,12 @@
 #include <base/guid.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
-#include <weave/mdns.h>
+#include <weave/dns_service_discovery_provider.h>
 
 namespace buffet {
 
 // Stub MDNS implementation that does nothing on platform without MDNS support.
-class MdnsClient : public weave::Mdns {
+class MdnsClient : public weave::DnsServiceDiscoveryProvider {
  public:
   MdnsClient() : device_id_{base::GenerateGUID()} {}
   ~MdnsClient() override = default;

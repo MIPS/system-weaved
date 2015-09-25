@@ -21,7 +21,7 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
-#include <weave/network.h>
+#include <weave/network_provider.h>
 
 #include "connectivity_client.h"
 
@@ -35,16 +35,16 @@ class BrilloNetworkClient : public NetworkClient {
   ~BrilloNetworkClient() override;
 
   // Implements the Network interface.
-  void AddOnConnectionChangedCallback(
-      const OnConnectionChangedCallback& listener) override;
-  void ConnectToService(
+  void AddConnectionChangedCallback(
+      const ConnectionChangedCallback& listener) override;
+  void Connect(
       const std::string& ssid,
       const std::string& passphrase,
-      const base::Closure& on_success,
+      const weave::SuccessCallback& on_success,
       const base::Callback<void(const weave::Error*)>& on_error) override;
   weave::NetworkState GetConnectionState() const override;
-  void EnableAccessPoint(const std::string& ssid) override;
-  void DisableAccessPoint() override;
+  void StartAccessPoint(const std::string& ssid) override;
+  void StopAccessPoint() override;
 
  private:
   enum class ConnectionState {
@@ -58,7 +58,7 @@ class BrilloNetworkClient : public NetworkClient {
   void UpdateConnectionState();
 
   ConnectivityClient connectivity_client_;
-  std::vector<OnConnectionChangedCallback> connection_listeners_;
+  std::vector<ConnectionChangedCallback> connection_listeners_;
   base::CancelableClosure connection_timeout_closure_;
   base::CancelableClosure periodic_connection_state_closure_;
   base::Closure connection_success_closure_;

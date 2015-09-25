@@ -36,16 +36,15 @@ BrilloNetworkClient::BrilloNetworkClient(
 BrilloNetworkClient::~BrilloNetworkClient() {
 }
 
-void BrilloNetworkClient::AddOnConnectionChangedCallback(
-    const OnConnectionChangedCallback& listener) {
+void BrilloNetworkClient::AddConnectionChangedCallback(
+    const ConnectionChangedCallback& listener) {
   connection_listeners_.push_back(listener);
 }
 
-void BrilloNetworkClient::ConnectToService(
-    const std::string& ssid,
-    const std::string& passphrase,
-    const base::Closure& on_success,
-    const base::Callback<void(const weave::Error*)>& on_error) {
+void BrilloNetworkClient::Connect(const std::string& ssid,
+                                  const std::string& passphrase,
+                                  const weave::SuccessCallback& on_success,
+                                  const weave::ErrorCallback& on_error) {
   if (!connectivity_client_.ConnectToAccessPoint(ssid, passphrase)) {
     weave::ErrorPtr error;
     weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "network_failure",
@@ -73,12 +72,12 @@ weave::NetworkState BrilloNetworkClient::GetConnectionState() const {
   return state_;
 }
 
-void BrilloNetworkClient::EnableAccessPoint(const std::string& ssid) {
+void BrilloNetworkClient::StartAccessPoint(const std::string& ssid) {
   connectivity_client_.EnableAccessPoint(ssid);
   state_ = weave::NetworkState::kOffline;
 }
 
-void BrilloNetworkClient::DisableAccessPoint() {
+void BrilloNetworkClient::StopAccessPoint() {
   connectivity_client_.DisableAccessPoint();
 }
 

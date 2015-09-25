@@ -23,15 +23,16 @@
 
 #include <base/cancelable_callback.h>
 #include <chromeos/errors/error_codes.h>
-#include <weave/network.h>
-#include <weave/wifi.h>
+#include <weave/network_provider.h>
+#include <weave/wifi_provider.h>
 
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
 
 namespace buffet {
 
-class NetworkClient : public weave::Network, public weave::Wifi {
+class NetworkClient : public weave::NetworkProvider,
+                      public weave::WifiProvider {
  public:
   explicit NetworkClient(const std::set<std::string>& device_whitelist)
       : device_whitelist_{device_whitelist} {
@@ -39,33 +40,19 @@ class NetworkClient : public weave::Network, public weave::Wifi {
 
   ~NetworkClient() override = default;
 
-  // Implements the Network interface.
-  void AddOnConnectionChangedCallback(
-      const OnConnectionChangedCallback& listener) override {
-  }
-
-  void ConnectToService(
-      const std::string& ssid,
-      const std::string& passphrase,
-      const base::Closure& on_success,
-      const base::Callback<void(const weave::Error*)>& on_error) override {
-  }
+  // NetworkProvider implementation.
+  void AddConnectionChangedCallback(
+      const ConnectionChangedCallback& listener) override {}
 
   weave::NetworkState GetConnectionState() const override {
     return weave::NetworkState::kOffline;
-  }
-
-  void EnableAccessPoint(const std::string& ssid) override {
-  }
-
-  void DisableAccessPoint() override {
   }
 
   void OpenSslSocket(
       const std::string& host,
       uint16_t port,
       const base::Callback<void(std::unique_ptr<weave::Stream>)>& on_success,
-      const base::Callback<void(const weave::Error*)>& on_error) override {
+      const weave::ErrorCallback& on_error) override {
     auto socket = SocketStream::ConnectBlocking(host, port);
     if (socket) {
       SocketStream::TlsConnect(std::move(socket), host, on_success, on_error);
@@ -77,6 +64,16 @@ class NetworkClient : public weave::Network, public weave::Wifi {
     ConvertError(*error.get(), &weave_error);
     on_error.Run(weave_error.get());
   }
+
+  // WifiProvider implementation.
+  void Connect(const std::string& ssid,
+               const std::string& passphrase,
+               const weave::SuccessCallback& on_success,
+               const weave::ErrorCallback& on_error) override {}
+
+  void StartAccessPoint(const std::string& ssid) override {}
+
+  void StopAccessPoint() override {}
 
   static std::unique_ptr<NetworkClient> CreateInstance(
       const std::set<std::string>& device_whitelist);
