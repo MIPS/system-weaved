@@ -18,6 +18,8 @@
 
 #include <base/message_loop/message_loop.h>
 
+using weave::provider::Network;
+
 namespace buffet {
 
 namespace {
@@ -29,7 +31,7 @@ const int kConnectionInactivePollSeconds = 10;
 
 BrilloNetworkClient::BrilloNetworkClient(
     const std::set<std::string>& device_whitelist)
-    : NetworkClient{device_whitelist}, state_(weave::NetworkState::kOffline) {
+    : NetworkClient{device_whitelist} {
   UpdateConnectionState();
 }
 
@@ -55,7 +57,7 @@ void BrilloNetworkClient::Connect(const std::string& ssid,
   }
 
   connection_success_closure_ = on_success;
-  state_ = weave::NetworkState::kConnecting;
+  connectivity_state_ = State::kConnecting;
 
   connection_timeout_closure_.Reset(
       base::Bind(&BrilloNetworkClient::OnConnectionTimeout,
@@ -68,13 +70,13 @@ void BrilloNetworkClient::Connect(const std::string& ssid,
   ScheduleNextStatePoll();
 }
 
-weave::NetworkState BrilloNetworkClient::GetConnectionState() const {
-  return state_;
+Network::State BrilloNetworkClient::GetConnectionState() const {
+  return connectivity_state_;
 }
 
 void BrilloNetworkClient::StartAccessPoint(const std::string& ssid) {
   connectivity_client_.EnableAccessPoint(ssid);
-  state_ = weave::NetworkState::kOffline;
+  connectivity_state_ = State::kOffline;
 }
 
 void BrilloNetworkClient::StopAccessPoint() {
@@ -82,7 +84,7 @@ void BrilloNetworkClient::StopAccessPoint() {
 }
 
 void BrilloNetworkClient::OnConnectionTimeout() {
-  state_ = weave::NetworkState::kFailure;
+  connectivity_state_ = State::kFailure;
 }
 
 void BrilloNetworkClient::ScheduleNextStatePoll() {
@@ -90,7 +92,7 @@ void BrilloNetworkClient::ScheduleNextStatePoll() {
       base::Bind(&BrilloNetworkClient::UpdateConnectionState,
                  base::Unretained(this)));
   int poll_period_seconds;
-  if (state_ == weave::NetworkState::kConnecting) {
+  if (connectivity_state_ == State::kConnecting) {
     poll_period_seconds = kConnectionActivePollSeconds;
   } else {
     poll_period_seconds = kConnectionInactivePollSeconds;
@@ -102,15 +104,15 @@ void BrilloNetworkClient::ScheduleNextStatePoll() {
 }
 
 void BrilloNetworkClient::UpdateConnectionState() {
-  bool was_connected = state_ == weave::NetworkState::kConnected;
+  bool was_connected = connectivity_state_ == State::kConnected;
   bool is_connected = connectivity_client_.IsConnected();
 
   if (is_connected) {
-    if (state_ == weave::NetworkState::kConnecting)
+    if (connectivity_state_ == State::kConnecting)
       connection_success_closure_.Run();
-    state_ = weave::NetworkState::kConnected;
-  } else if (state_ == weave::NetworkState::kConnected) {
-    state_ = weave::NetworkState::kOffline;
+    connectivity_state_ = State::kConnected;
+  } else if (connectivity_state_ == State::kConnected) {
+    connectivity_state_ = State::kOffline;
   }
   if (is_connected != was_connected) {
     for (const auto& listener : connection_listeners_) {

@@ -21,7 +21,6 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
-#include <weave/network_provider.h>
 
 #include "connectivity_client.h"
 
@@ -42,7 +41,7 @@ class BrilloNetworkClient : public NetworkClient {
       const std::string& passphrase,
       const weave::SuccessCallback& on_success,
       const base::Callback<void(const weave::Error*)>& on_error) override;
-  weave::NetworkState GetConnectionState() const override;
+  State GetConnectionState() const override;
   void StartAccessPoint(const std::string& ssid) override;
   void StopAccessPoint() override;
 
@@ -62,7 +61,7 @@ class BrilloNetworkClient : public NetworkClient {
   base::CancelableClosure connection_timeout_closure_;
   base::CancelableClosure periodic_connection_state_closure_;
   base::Closure connection_success_closure_;
-  weave::NetworkState state_;
+  State connectivity_state_{State::kOffline};
   bool is_connected_;
 
   DISALLOW_COPY_AND_ASSIGN(BrilloNetworkClient);

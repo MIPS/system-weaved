@@ -5,13 +5,13 @@
 #ifndef BUFFET_PEERD_CLIENT_H_
 #define BUFFET_PEERD_CLIENT_H_
 
-#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <weave/mdns.h>
+#include <weave/provider/dns_service_discovery.h>
 
 #include "peerd/dbus-proxies.h"
 
@@ -22,16 +22,16 @@ class Bus;
 namespace buffet {
 
 // Publishes privet service on mDns using peerd.
-class PeerdClient : public weave::Mdns {
+class PeerdClient : public weave::provider::DnsServiceDiscovery {
  public:
   explicit PeerdClient(const scoped_refptr<dbus::Bus>& bus);
   ~PeerdClient() override;
 
   // Mdns implementation.
-  void PublishService(const std::string& service_name,
+  void PublishService(const std::string& service_type,
                       uint16_t port,
-                      const std::map<std::string, std::string>& txt) override;
-  void StopPublishing(const std::string& service_name) override;
+                      const std::vector<std::string>& txt) override;
+  void StopPublishing(const std::string& service_type) override;
   std::string GetId() const override;
 
  private:
@@ -56,9 +56,9 @@ class PeerdClient : public weave::Mdns {
   // Cached value of the device ID that we got from peerd.
   std::string device_id_;
 
-  std::string service_name_;
+  bool published_{false};
   uint16_t port_{0};
-  std::map<std::string, std::string> txt_;
+  std::vector<std::string> txt_;
 
   base::WeakPtrFactory<PeerdClient> restart_weak_ptr_factory_{this};
   base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};

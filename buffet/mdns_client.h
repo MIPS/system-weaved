@@ -24,17 +24,17 @@
 #include <base/guid.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
-#include <weave/dns_service_discovery_provider.h>
+#include <weave/provider/dns_service_discovery.h>
 
 namespace buffet {
 
 // Stub MDNS implementation that does nothing on platform without MDNS support.
-class MdnsClient : public weave::DnsServiceDiscoveryProvider {
+class MdnsClient : public weave::provider::DnsServiceDiscovery {
  public:
   MdnsClient() : device_id_{base::GenerateGUID()} {}
   ~MdnsClient() override = default;
 
-  // weave::Mdns implementation.
+  // weave::provider::DnsServiceDiscovery implementation.
   void PublishService(const std::string& service_type, uint16_t port,
                       const std::vector<std::string>& txt) override {}
   void StopPublishing(const std::string& service_type) override {}

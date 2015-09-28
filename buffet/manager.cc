@@ -51,7 +51,7 @@ const char kNotImplemented[] = "notImplemented";
 
 }  // anonymous namespace
 
-class Manager::TaskRunner : public weave::TaskRunner {
+class Manager::TaskRunner : public weave::provider::TaskRunner {
  public:
   void PostDelayedTask(const tracked_objects::Location& from_here,
                        const base::Closure& task,
@@ -182,12 +182,12 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
   auto properties =
       DictionaryFromDBusVariantDictionary(property_set, &chromeos_error);
   if (!properties)
-    response->ReplyWithError(chromeos_error.get());
+    return response->ReplyWithError(chromeos_error.get());
 
   weave::ErrorPtr error;
   if (!device_->GetState()->SetProperties(*properties, &error)) {
     ConvertError(*error, &chromeos_error);
-    response->ReplyWithError(chromeos_error.get());
+    return response->ReplyWithError(chromeos_error.get());
   }
   response->Return();
 }

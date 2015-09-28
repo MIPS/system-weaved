@@ -22,7 +22,6 @@
 
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
-#include <weave/dns_service_discovery_provider.h>
 
 #include "buffet/mdns_client.h"
 
@@ -34,7 +33,7 @@ class AvahiMdnsClient : public MdnsClient {
   explicit AvahiMdnsClient(const scoped_refptr<dbus::Bus>& bus);
   ~AvahiMdnsClient() override;
 
-  // weave::DnsServiceDiscoveryProvider implementation.
+  // weave::provider::DnsServiceDiscovery implementation.
   void PublishService(const std::string& service_type, uint16_t port,
                       const std::vector<std::string>& txt) override;
   void StopPublishing(const std::string& service_type) override;

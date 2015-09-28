@@ -23,16 +23,16 @@
 
 #include <base/cancelable_callback.h>
 #include <chromeos/errors/error_codes.h>
-#include <weave/network_provider.h>
-#include <weave/wifi_provider.h>
+#include <weave/provider/network.h>
+#include <weave/provider/wifi.h>
 
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
 
 namespace buffet {
 
-class NetworkClient : public weave::NetworkProvider,
-                      public weave::WifiProvider {
+class NetworkClient : public weave::provider::Network,
+                      public weave::provider::Wifi {
  public:
   explicit NetworkClient(const std::set<std::string>& device_whitelist)
       : device_whitelist_{device_whitelist} {
@@ -44,8 +44,8 @@ class NetworkClient : public weave::NetworkProvider,
   void AddConnectionChangedCallback(
       const ConnectionChangedCallback& listener) override {}
 
-  weave::NetworkState GetConnectionState() const override {
-    return weave::NetworkState::kOffline;
+  State GetConnectionState() const override {
+    return State::kOffline;
   }
 
   void OpenSslSocket(

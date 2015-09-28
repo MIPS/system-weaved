@@ -20,11 +20,11 @@
 #include <memory>
 
 #include <base/macros.h>
-#include <weave/bluetooth.h>
+#include <weave/provider/bluetooth.h>
 
 namespace buffet {
 
-class BluetoothClient : public weave::Bluetooth {
+class BluetoothClient : public weave::provider::Bluetooth {
  public:
   BluetoothClient() {}
   ~BluetoothClient() override = default;
