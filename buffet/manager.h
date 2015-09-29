@@ -114,7 +114,6 @@ class Manager final : public com::android::Weave::ManagerInterface {
   void OnStateChanged();
   void OnRegistrationChanged(weave::RegistrationStatus status);
   void OnConfigChanged(const weave::Settings& settings);
-  void UpdateWiFiBootstrapState(weave::WifiSetupState state);
   void OnPairingStart(const std::string& session_id,
                       weave::PairingType pairing_type,
                       const std::vector<uint8_t>& code);
