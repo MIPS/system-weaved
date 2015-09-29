@@ -14,10 +14,6 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# TODO(avakulenko): Remove this condition when libchromeos can be built on
-# non-Linux host.
-ifeq ($(HOST_OS),linux)
-
 # Common variables
 # ========================================================
 
@@ -233,5 +229,3 @@ LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/dbus-1
 LOCAL_SRC_FILES := buffet/etc/dbus-1/com.android.Weave.conf
 include $(BUILD_PREBUILT)
-
-endif # HOST_OS == linux
