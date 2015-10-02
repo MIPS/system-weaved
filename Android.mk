@@ -88,11 +88,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
 LOCAL_REQUIRED_MODULES := \
 	avahi-daemon \
-	base_state.defaults.json \
-	base_state.schema.json \
 	weaved.json \
 	com.android.Weave.conf \
-	gcd.json \
 	webservd \
 
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
@@ -156,51 +153,8 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_NATIVE_TEST)
 
-# weaved_client
-# ========================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := weaved_client
-LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
-LOCAL_CFLAGS := $(buffetCommonCFlags)
-LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
-LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
-LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
-LOCAL_STATIC_LIBRARIES :=
-LOCAL_DBUS_PROXY_PREFIX := buffet
-LOCAL_RTTI_FLAG := -frtti
-LOCAL_CLANG := true
-
-LOCAL_SRC_FILES := \
-	buffet/buffet_client.cc \
-	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
-	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
-
-include $(BUILD_EXECUTABLE)
-
 # Config files for /etc/weaved
 # ========================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := base_state.defaults.json
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved
-LOCAL_SRC_FILES := buffet/etc/weaved/base_state.defaults.json
-include $(BUILD_PREBUILT)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := base_state.schema.json
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved
-LOCAL_SRC_FILES := buffet/etc/weaved/base_state.schema.json
-include $(BUILD_PREBUILT)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := gcd.json
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved
-LOCAL_SRC_FILES := buffet/etc/weaved/gcd.json
-include $(BUILD_PREBUILT)
-
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved.json
 LOCAL_MODULE_CLASS := ETC

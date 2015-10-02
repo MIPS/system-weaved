@@ -14,12 +14,15 @@
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <chromeos/bind_lambda.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
+#include <chromeos/http/http_utils.h>
 #include <chromeos/key_value_store.h>
 #include <chromeos/message_loops/message_loop.h>
+#include <chromeos/mime_utils.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -47,7 +50,6 @@ const char kPairingModeKey[] = "mode";
 const char kPairingCodeKey[] = "code";
 
 const char kErrorDomain[] = "buffet";
-const char kNotImplemented[] = "notImplemented";
 
 }  // anonymous namespace
 
@@ -69,42 +71,55 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 Manager::~Manager() {
 }
 
-void Manager::Start(const weave::Device::Options& options,
-                    const BuffetConfigPaths& paths,
+void Manager::Start(const Options& options,
+                    const BuffetConfig::Options& paths,
                     const std::set<std::string>& device_whitelist,
                     AsyncEventSequencer* sequencer) {
   task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
-  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
+  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist,
+                                      !options.xmpp_enabled});
+  weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options.disable_privet) {
     mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
     web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
     bluetooth_client_ = BluetoothClient::CreateInstance();
+    http_server = web_serv_client_.get();
+
+    if (options.enable_ping) {
+      http_server->AddRequestHandler(
+          "/privet/ping",
+          base::Bind(
+              [](const weave::provider::HttpServer::Request& request,
+                 const weave::provider::HttpServer::OnReplyCallback& callback) {
+                callback.Run(chromeos::http::status_code::Ok, "Hello, world!",
+                             chromeos::mime::text::kPlain);
+              }));
+    }
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
-  device_ = weave::Device::Create();
   config_.reset(new BuffetConfig{paths});
-  config_->AddOnChangedCallback(
-      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
+  device_ = weave::Device::Create(config_.get(), task_runner_.get(),
+                                  http_client_.get(), shill_client_.get(),
+                                  mdns_client_.get(), web_serv_client_.get(),
+                                  shill_client_.get(), bluetooth_client_.get());
 
-  device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
-                 shill_client_.get(), mdns_client_.get(),
-                 web_serv_client_.get(), shill_client_.get(),
-                 bluetooth_client_.get());
+  device_->AddSettingsChangedCallback(
+      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
 
-  device_->GetState()->AddOnChangedCallback(
+  device_->AddStateChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  device_->GetCloud()->AddOnRegistrationChangedCallback(base::Bind(
-      &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
+  device_->AddGcdStateChangedCallback(
+      base::Bind(&Manager::OnGcdStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  if (device_->GetPrivet()) {
-    device_->GetPrivet()->AddOnPairingChangedCallbacks(
+  if (!options.disable_privet) {
+    device_->AddPairingChangedCallbacks(
         base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
         base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
   }
@@ -118,50 +133,12 @@ void Manager::Stop() {
   device_.reset();
 }
 
-// TODO(vitalybuka): Remove, it's just duplicate of property.
-void Manager::CheckDeviceRegistered(
-    DBusMethodResponsePtr<std::string> response) {
-  LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
-  response->Return(dbus_adaptor_.GetDeviceId());
-}
-
-// TODO(vitalybuka): Remove or rename to leave for testing.
-void Manager::GetDeviceInfo(DBusMethodResponsePtr<std::string> response) {
-  LOG(INFO) << "Received call to Manager.GetDeviceInfo()";
-  std::shared_ptr<DBusMethodResponse<std::string>> shared_response =
-      std::move(response);
-
-  device_->GetCloud()->GetDeviceInfo(
-      base::Bind(&Manager::OnGetDeviceInfoSuccess,
-                 weak_ptr_factory_.GetWeakPtr(), shared_response),
-      base::Bind(&Manager::OnGetDeviceInfoError, weak_ptr_factory_.GetWeakPtr(),
-                 shared_response));
-}
-
-void Manager::OnGetDeviceInfoSuccess(
-    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    const base::DictionaryValue& device_info) {
-  std::string device_info_str;
-  base::JSONWriter::WriteWithOptions(
-      device_info, base::JSONWriter::OPTIONS_PRETTY_PRINT, &device_info_str);
-  response->Return(device_info_str);
-}
-
-void Manager::OnGetDeviceInfoError(
-    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-    const weave::Error* error) {
-  chromeos::ErrorPtr chromeos_error;
-  ConvertError(*error, &chromeos_error);
-  response->ReplyWithError(chromeos_error.get());
-}
-
 void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
                              const std::string& ticket_id) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
   weave::ErrorPtr error;
-  std::string device_id =
-      device_->GetCloud()->RegisterDevice(ticket_id, &error);
+  std::string device_id = device_->Register(ticket_id, &error);
   if (!device_id.empty()) {
     response->Return(device_id);
     return;
@@ -180,7 +157,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
     return response->ReplyWithError(chromeos_error.get());
 
   weave::ErrorPtr error;
-  if (!device_->GetState()->SetProperties(*properties, &error)) {
+  if (!device_->SetStateProperties(*properties, &error)) {
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
   }
@@ -188,7 +165,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
 }
 
 bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
-  auto json = device_->GetState()->GetStateValuesAsJson();
+  auto json = device_->GetState();
   CHECK(json);
   base::JSONWriter::WriteWithOptions(
       *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
@@ -196,8 +173,7 @@ bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
 }
 
 void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
-                         const std::string& json_command,
-                         const std::string& in_user_role) {
+                         const std::string& json_command) {
   std::string error_message;
   std::unique_ptr<base::Value> value(
       base::JSONReader::ReadAndReturnError(json_command, base::JSON_PARSE_RFC,
@@ -210,18 +186,10 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
                                     error_message);
   }
 
-  chromeos::ErrorPtr chromeos_error;
-  weave::UserRole role;
-  if (!StringToEnum(in_user_role, &role)) {
-    chromeos::Error::AddToPrintf(&chromeos_error, FROM_HERE, kErrorDomain,
-                                 "invalid_user_role", "Invalid role: '%s'",
-                                 in_user_role.c_str());
-    return response->ReplyWithError(chromeos_error.get());
-  }
-
   std::string id;
   weave::ErrorPtr error;
-  if (!device_->GetCommands()->AddCommand(*command, role, &id, &error)) {
+  if (!device_->GetCommands()->AddCommand(*command, &id, &error)) {
+    chromeos::ErrorPtr chromeos_error;
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
   }
@@ -248,66 +216,8 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-bool Manager::EnableWiFiBootstrapping(
-    chromeos::ErrorPtr* error,
-    const dbus::ObjectPath& in_listener_path,
-    const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual WiFi bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::DisableWiFiBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual WiFi bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::EnableGCDBootstrapping(
-    chromeos::ErrorPtr* error,
-    const dbus::ObjectPath& in_listener_path,
-    const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual GCD bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, kNotImplemented,
-                         "Manual GCD bootstrapping is not implemented");
-  return false;
-}
-
-bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* chromeos_error,
-                               const std::string& name,
-                               const std::string& description,
-                               const std::string& location) {
-  weave::ErrorPtr error;
-  if (!device_->GetCloud()->UpdateDeviceInfo(name, description, location,
-                                             &error)) {
-    ConvertError(*error, chromeos_error);
-    return false;
-  }
-  return true;
-}
-
-bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* chromeos_error,
-                                  const std::string& client_id,
-                                  const std::string& client_secret,
-                                  const std::string& api_key,
-                                  const std::string& oauth_url,
-                                  const std::string& service_url) {
-  weave::ErrorPtr error;
-  if (!device_->GetCloud()->UpdateServiceConfig(
-          client_id, client_secret, api_key, oauth_url, service_url, &error)) {
-    ConvertError(*error, chromeos_error);
-    return false;
-  }
-  return true;
-}
-
 void Manager::OnStateChanged() {
-  auto state = device_->GetState()->GetStateValuesAsJson();
+  auto state = device_->GetState();
   CHECK(state);
   std::string json;
   base::JSONWriter::WriteWithOptions(
@@ -315,8 +225,8 @@ void Manager::OnStateChanged() {
   dbus_adaptor_.SetState(json);
 }
 
-void Manager::OnRegistrationChanged(weave::RegistrationStatus status) {
-  dbus_adaptor_.SetStatus(weave::EnumToString(status));
+void Manager::OnGcdStateChanged(weave::GcdState state) {
+  dbus_adaptor_.SetStatus(weave::EnumToString(state));
 }
 
 void Manager::OnConfigChanged(const weave::Settings& settings) {

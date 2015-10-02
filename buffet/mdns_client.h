@@ -31,22 +31,18 @@ namespace buffet {
 // Stub MDNS implementation that does nothing on platform without MDNS support.
 class MdnsClient : public weave::provider::DnsServiceDiscovery {
  public:
-  MdnsClient() : device_id_{base::GenerateGUID()} {}
+  MdnsClient() {}
   ~MdnsClient() override = default;
 
   // weave::provider::DnsServiceDiscovery implementation.
   void PublishService(const std::string& service_type, uint16_t port,
                       const std::vector<std::string>& txt) override {}
   void StopPublishing(const std::string& service_type) override {}
-  std::string GetId() const override { return device_id_; }
 
   static std::unique_ptr<MdnsClient> CreateInstance(
       const scoped_refptr<dbus::Bus>& bus);
 
  protected:
-  // Cached value of the device ID that we got from peerd.
-  std::string device_id_;
-
   DISALLOW_COPY_AND_ASSIGN(MdnsClient);
 };
 

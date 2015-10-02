@@ -20,6 +20,7 @@
 #include <chromeos/errors/error.h>
 #include <weave/device.h>
 
+#include "buffet/buffet_config.h"
 #include "buffet/dbus_bindings/com.android.Weave.Manager.h"
 
 namespace chromeos {
@@ -31,13 +32,11 @@ class ExportedObjectManager;
 namespace buffet {
 
 class BluetoothClient;
-class BuffetConfig;
 class DBusCommandDispacher;
 class HttpTransportClient;
 class MdnsClient;
 class ShillClient;
 class WebServClient;
-struct BuffetConfigPaths;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -52,13 +51,19 @@ using DBusMethodResponse =
 // device state.
 class Manager final : public com::android::Weave::ManagerInterface {
  public:
+  struct Options {
+    bool xmpp_enabled = true;
+    bool disable_privet = false;
+    bool enable_ping = false;
+  };
+
   explicit Manager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
   ~Manager();
 
-  void Start(const weave::Device::Options& options,
-             const BuffetConfigPaths& paths,
+  void Start(const Options& options,
+             const BuffetConfig::Options& config_options,
              const std::set<std::string>& device_whitelist,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
@@ -66,53 +71,22 @@ class Manager final : public com::android::Weave::ManagerInterface {
 
  private:
   // DBus methods:
-  void CheckDeviceRegistered(
-      DBusMethodResponsePtr<std::string> response) override;
-  void GetDeviceInfo(DBusMethodResponsePtr<std::string> response) override;
   void RegisterDevice(DBusMethodResponsePtr<std::string> response,
                       const std::string& ticket_id) override;
-  bool UpdateDeviceInfo(chromeos::ErrorPtr* error,
-                        const std::string& name,
-                        const std::string& description,
-                        const std::string& location) override;
-  bool UpdateServiceConfig(chromeos::ErrorPtr* error,
-                           const std::string& client_id,
-                           const std::string& client_secret,
-                           const std::string& api_key,
-                           const std::string& oauth_url,
-                           const std::string& service_url) override;
   void UpdateState(DBusMethodResponsePtr<> response,
                    const chromeos::VariantDictionary& property_set) override;
   bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,
-                  const std::string& json_command,
-                  const std::string& in_user_role) override;
+                  const std::string& json_command) override;
   void GetCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& id) override;
   std::string TestMethod(const std::string& message) override;
-  bool EnableWiFiBootstrapping(
-      chromeos::ErrorPtr* error,
-      const dbus::ObjectPath& in_listener_path,
-      const chromeos::VariantDictionary& in_options) override;
-  bool DisableWiFiBootstrapping(chromeos::ErrorPtr* error) override;
-  bool EnableGCDBootstrapping(
-      chromeos::ErrorPtr* error,
-      const dbus::ObjectPath& in_listener_path,
-      const chromeos::VariantDictionary& in_options) override;
-  bool DisableGCDBootstrapping(chromeos::ErrorPtr* error) override;
 
-  void OnGetDeviceInfoSuccess(
-      const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-      const base::DictionaryValue& device_info);
-  void OnGetDeviceInfoError(
-      const std::shared_ptr<DBusMethodResponse<std::string>>& response,
-      const weave::Error* error);
-
-  void StartPrivet(const weave::Device::Options& options,
+  void StartPrivet(const Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnStateChanged();
-  void OnRegistrationChanged(weave::RegistrationStatus status);
+  void OnGcdStateChanged(weave::GcdState state);
   void OnConfigChanged(const weave::Settings& settings);
   void OnPairingStart(const std::string& session_id,
                       weave::PairingType pairing_type,

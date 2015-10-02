@@ -59,6 +59,7 @@ class AvahiMdnsClient : public MdnsClient {
   // State of the group/service publish operation.
   AsyncState service_state_{UNDEF};
 
+  std::string service_name_;
   std::string service_type_;
   uint16_t port_{0};
   TxtRecord txt_;

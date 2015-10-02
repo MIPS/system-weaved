@@ -30,7 +30,7 @@ std::string GetIPAddress(const sockaddr* sa) {
   switch (sa->sa_family) {
     case AF_INET:
       if (inet_ntop(AF_INET,
-                    &reinterpret_cast<const sockaddr_in*>(sa)->sin_addr, str,
+                    &(reinterpret_cast<const sockaddr_in*>(sa)->sin_addr), str,
                     sizeof(str))) {
         addr = str;
       }
@@ -38,8 +38,8 @@ std::string GetIPAddress(const sockaddr* sa) {
 
     case AF_INET6:
       if (inet_ntop(AF_INET6,
-                    &reinterpret_cast<const sockaddr_in6*>(sa)->sin6_addr, str,
-                    sizeof(str))) {
+                    &(reinterpret_cast<const sockaddr_in6*>(sa)->sin6_addr),
+                    str, sizeof(str))) {
         addr = str;
       }
       break;

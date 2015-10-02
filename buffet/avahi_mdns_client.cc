@@ -39,7 +39,7 @@ using CompletionAction =
 namespace buffet {
 
 AvahiMdnsClient::AvahiMdnsClient(const scoped_refptr<dbus::Bus> &bus)
-    : bus_(bus) {
+    : bus_(bus), service_name_(base::GenerateGUID()) {
 }
 
 AvahiMdnsClient::~AvahiMdnsClient() {
@@ -229,7 +229,7 @@ void AvahiMdnsClient::FreeEntryGroup() {
 void AvahiMdnsClient::CreateService() {
   ErrorPtr error;
 
-  VLOG(1) << "CreateService: name: " << device_id_ << ", type: " <<
+  VLOG(1) << "CreateService: name: " << service_name_ << ", type: " <<
       service_type_ << ", port: " << port_;
   auto resp = CallMethodAndBlock(
       entry_group_,
@@ -239,7 +239,7 @@ void AvahiMdnsClient::CreateService() {
       int32_t{AVAHI_IF_UNSPEC},
       int32_t{AVAHI_PROTO_UNSPEC},
       uint32_t{0},  // No flags.
-      device_id_,
+      service_name_,
       std::string{"_privet._tcp"},
       std::string{},  // domain.
       std::string{},  // hostname
@@ -269,7 +269,7 @@ void AvahiMdnsClient::UpdateServiceTxt() {
 
   CHECK_EQ(READY, service_state_);
 
-  VLOG(1) << "UpdateServiceTxt: name " << device_id_ << ", type: " <<
+  VLOG(1) << "UpdateServiceTxt: name " << service_name_ << ", type: " <<
       service_type_ << ", port: " << port_;
   auto resp = CallMethodAndBlock(
       entry_group_,
@@ -279,7 +279,7 @@ void AvahiMdnsClient::UpdateServiceTxt() {
       int32_t{AVAHI_IF_UNSPEC},
       int32_t{AVAHI_PROTO_UNSPEC},
       uint32_t{0},  // No flags.
-      device_id_,
+      service_name_,
       std::string{"_privet._tcp"},
       std::string{},  // domain.
       txt_);
