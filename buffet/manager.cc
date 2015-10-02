@@ -31,7 +31,7 @@
 #include "buffet/dbus_conversion.h"
 #include "buffet/http_transport_client.h"
 #include "buffet/mdns_client.h"
-#include "buffet/network_client.h"
+#include "buffet/shill_client.h"
 #include "buffet/weave_error_conversion.h"
 #include "buffet/webserv_client.h"
 
@@ -75,7 +75,7 @@ void Manager::Start(const weave::Device::Options& options,
                     AsyncEventSequencer* sequencer) {
   task_runner_.reset(new TaskRunner{});
   http_client_.reset(new HttpTransportClient);
-  network_client_ = NetworkClient::CreateInstance(device_whitelist);
+  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist});
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options.disable_privet) {
     mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
@@ -90,8 +90,8 @@ void Manager::Start(const weave::Device::Options& options,
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
   device_->Start(options, config_.get(), task_runner_.get(), http_client_.get(),
-                 network_client_.get(), mdns_client_.get(),
-                 web_serv_client_.get(), network_client_.get(),
+                 shill_client_.get(), mdns_client_.get(),
+                 web_serv_client_.get(), shill_client_.get(),
                  bluetooth_client_.get());
 
   command_dispatcher_.reset(new DBusCommandDispacher{

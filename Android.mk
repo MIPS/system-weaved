@@ -31,9 +31,11 @@ buffetCommonCppFlags := \
 buffetCommonCIncludes := \
 	$(LOCAL_PATH)/.. \
 	$(LOCAL_PATH)/dbus-proxies \
+	external/cros/system_api \
 	external/gtest/include \
 
 buffetSharedLibraries := \
+	libapmanager-client \
 	libavahi-common \
 	libchrome \
 	libchrome-dbus \
@@ -42,12 +44,9 @@ buffetSharedLibraries := \
 	libchromeos-http \
 	libchromeos-stream \
 	libdbus \
+	libshill-client \
 	libweave \
 	libwebserv \
-
-ifdef BRILLO
-buffetSharedLibraries += libconnectivity
-endif
 
 # buffet-common
 # ========================================================
@@ -64,34 +63,22 @@ LOCAL_CLANG := true
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 
 LOCAL_SRC_FILES := \
+	buffet/ap_manager_client.cc \
+	buffet/avahi_mdns_client.cc \
 	buffet/buffet_config.cc \
 	buffet/dbus_command_dispatcher.cc \
 	buffet/dbus_command_proxy.cc \
 	buffet/dbus_conversion.cc \
 	buffet/dbus_constants.cc \
+	buffet/flouride_socket_bluetooth_client.cc \
 	buffet/http_transport_client.cc \
 	buffet/manager.cc \
+	buffet/shill_client.cc \
 	buffet/socket_stream.cc \
 	buffet/webserv_client.cc \
 	buffet/dbus_bindings/dbus-service-config.json \
 	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
 	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
-
-ifdef BRILLO
-
-LOCAL_SRC_FILES += \
-	buffet/avahi_mdns_client.cc \
-	buffet/brillo_network_client.cc \
-	buffet/flouride_socket_bluetooth_client.cc \
-
-else # BRILLO
-
-LOCAL_SRC_FILES += \
-	buffet/stub_bluetooth_client.cc \
-	buffet/stub_mdns_client.cc \
-	buffet/stub_network_client.cc \
-
-endif # BRILLO
 
 include $(BUILD_STATIC_LIBRARY)
 

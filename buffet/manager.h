@@ -35,7 +35,7 @@ class BuffetConfig;
 class DBusCommandDispacher;
 class HttpTransportClient;
 class MdnsClient;
-class NetworkClient;
+class ShillClient;
 class WebServClient;
 struct BuffetConfigPaths;
 
@@ -126,7 +126,7 @@ class Manager final : public com::android::Weave::ManagerInterface {
   std::unique_ptr<TaskRunner> task_runner_;
   std::unique_ptr<BluetoothClient> bluetooth_client_;
   std::unique_ptr<HttpTransportClient> http_client_;
-  std::unique_ptr<NetworkClient> network_client_;
+  std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<MdnsClient> mdns_client_;
   std::unique_ptr<WebServClient> web_serv_client_;
   std::unique_ptr<BuffetConfig> config_;
