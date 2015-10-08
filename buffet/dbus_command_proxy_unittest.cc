@@ -17,7 +17,6 @@
 #include <weave/command.h>
 #include <weave/enum_to_string.h>
 #include <weave/test/mock_command.h>
-#include <weave/test/mock_commands.h>
 #include <weave/test/unittest_utils.h>
 
 #include "buffet/dbus_constants.h"
@@ -37,7 +36,6 @@ using weave::test::IsEqualValue;
 
 namespace {
 
-const char kTestCommandCategoty[] = "test_command_category";
 const char kTestCommandId[] = "cmd_1";
 
 MATCHER_P(EqualToJson, json, "") {
@@ -50,8 +48,7 @@ MATCHER_P(EqualToJson, json, "") {
 class DBusCommandProxyTest : public ::testing::Test {
  public:
   void SetUp() override {
-    EXPECT_CALL(command_, AddObserver(_)).Times(1);
-    EXPECT_CALL(command_, RemoveObserver(_)).Times(1);
+    command_ = std::make_shared<StrictMock<weave::test::MockCommand>>();
     // Set up a mock DBus bus object.
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
@@ -60,25 +57,23 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
 
-    EXPECT_CALL(command_, GetID())
+    EXPECT_CALL(*command_, GetID())
         .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandId));
-    // Use WillRepeatedly becase GetName is used for logging.
-    EXPECT_CALL(command_, GetName())
+    // Use WillRepeatedly because GetName is used for logging.
+    EXPECT_CALL(*command_, GetName())
         .WillRepeatedly(ReturnRefOfCopy<std::string>("robot.jump"));
-    EXPECT_CALL(command_, GetCategory())
-        .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandCategoty));
-    EXPECT_CALL(command_, GetStatus())
-        .WillOnce(Return(weave::CommandStatus::kQueued));
-    EXPECT_CALL(command_, GetOrigin())
+    EXPECT_CALL(*command_, GetStatus())
+        .WillRepeatedly(Return(weave::CommandStatus::kQueued));
+    EXPECT_CALL(*command_, GetOrigin())
         .WillOnce(Return(weave::CommandOrigin::kLocal));
-    EXPECT_CALL(command_, MockGetParameters())
+    EXPECT_CALL(*command_, MockGetParameters())
         .WillOnce(ReturnRefOfCopy<std::string>(R"({
           'height': 53,
           '_jumpType': '_withKick'
         })"));
-    EXPECT_CALL(command_, MockGetProgress())
-        .WillOnce(ReturnRefOfCopy<std::string>("{}"));
-    EXPECT_CALL(command_, MockGetResults())
+    EXPECT_CALL(*command_, MockGetProgress())
+        .WillRepeatedly(ReturnRefOfCopy<std::string>("{}"));
+    EXPECT_CALL(*command_, MockGetResults())
         .WillOnce(ReturnRefOfCopy<std::string>("{}"));
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
@@ -94,7 +89,8 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_command_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
 
-    proxy_.reset(new DBusCommandProxy(nullptr, bus_, &command_, cmd_path));
+    proxy_.reset(new DBusCommandProxy{
+        nullptr, bus_, std::weak_ptr<weave::Command>{command_}, cmd_path});
     GetCommandProxy()->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
   }
@@ -124,7 +120,7 @@ class DBusCommandProxyTest : public ::testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
 
-  StrictMock<weave::test::MockCommand> command_;
+  std::shared_ptr<StrictMock<weave::test::MockCommand>> command_;
   std::unique_ptr<DBusCommandProxy> proxy_;
 };
 
@@ -137,42 +133,11 @@ TEST_F(DBusCommandProxyTest, Init) {
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
   EXPECT_EQ("robot.jump", GetCommandAdaptor()->GetName());
-  EXPECT_EQ(kTestCommandCategoty, GetCommandAdaptor()->GetCategory());
   EXPECT_EQ(kTestCommandId, GetCommandAdaptor()->GetId());
 }
 
-TEST_F(DBusCommandProxyTest, OnProgressChanged) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
-  EXPECT_CALL(command_, MockGetProgress())
-      .WillOnce(ReturnRefOfCopy<std::string>("{'progress': 10}"));
-  proxy_->OnProgressChanged();
-  EXPECT_EQ((VariantDictionary{{"progress", int32_t{10}}}),
-            GetCommandAdaptor()->GetProgress());
-}
-
-TEST_F(DBusCommandProxyTest, OnResultsChanged) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
-  EXPECT_CALL(command_, MockGetResults())
-      .WillOnce(ReturnRefOfCopy<std::string>(
-          "{'foo': 42, 'bar': 'foobar', 'resultList': [1, 2, 3]}"));
-  proxy_->OnResultsChanged();
-
-  EXPECT_EQ((VariantDictionary{{"foo", int32_t{42}},
-                               {"bar", std::string{"foobar"}},
-                               {"resultList", std::vector<int>{1, 2, 3}}}),
-            GetCommandAdaptor()->GetResults());
-}
-
-TEST_F(DBusCommandProxyTest, OnStatusChanged) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
-  EXPECT_CALL(command_, GetStatus())
-      .WillOnce(Return(weave::CommandStatus::kInProgress));
-  proxy_->OnStatusChanged();
-  EXPECT_EQ(weave::CommandStatus::kInProgress, GetCommandStatus());
-}
-
 TEST_F(DBusCommandProxyTest, SetProgress) {
-  EXPECT_CALL(command_, SetProgress(EqualToJson("{'progress': 10}"), _))
+  EXPECT_CALL(*command_, SetProgress(EqualToJson("{'progress': 10}"), _))
       .WillOnce(Return(true));
   EXPECT_TRUE(
       GetCommandInterface()->SetProgress(nullptr, {{"progress", int32_t{10}}}));
@@ -180,7 +145,7 @@ TEST_F(DBusCommandProxyTest, SetProgress) {
 
 TEST_F(DBusCommandProxyTest, SetResults) {
   EXPECT_CALL(
-      command_,
+      *command_,
       SetResults(
           EqualToJson("{'foo': 42, 'bar': 'foobar', 'resultList': [1, 2, 3]}"),
           _))
@@ -192,18 +157,18 @@ TEST_F(DBusCommandProxyTest, SetResults) {
 }
 
 TEST_F(DBusCommandProxyTest, Abort) {
-  EXPECT_CALL(command_, Abort());
-  GetCommandInterface()->Abort();
+  EXPECT_CALL(*command_, Abort());
+  EXPECT_TRUE(GetCommandInterface()->Abort(nullptr));
 }
 
 TEST_F(DBusCommandProxyTest, Cancel) {
-  EXPECT_CALL(command_, Cancel());
-  GetCommandInterface()->Cancel();
+  EXPECT_CALL(*command_, Cancel());
+  EXPECT_TRUE(GetCommandInterface()->Cancel(nullptr));
 }
 
 TEST_F(DBusCommandProxyTest, Done) {
-  EXPECT_CALL(command_, Done());
-  GetCommandInterface()->Done();
+  EXPECT_CALL(*command_, Done());
+  EXPECT_TRUE(GetCommandInterface()->Done(nullptr));
 }
 
 }  // namespace buffet

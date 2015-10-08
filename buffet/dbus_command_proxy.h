@@ -23,24 +23,17 @@ class ExportedObjectManager;
 
 namespace buffet {
 
-class DBusCommandProxy : public weave::Command::Observer,
-                         public com::android::Weave::CommandInterface {
+class DBusCommandProxy : public com::android::Weave::CommandInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
-                   weave::Command* command,
+                   const std::weak_ptr<weave::Command>& command,
                    std::string object_path);
   ~DBusCommandProxy() override = default;
 
   void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
           completion_callback);
-
-  // CommandProxyInterface implementation/overloads.
-  void OnResultsChanged() override;
-  void OnStatusChanged() override;
-  void OnProgressChanged() override;
-  void OnCommandDestroyed() override;
 
  private:
   // Handles calls to com.android.Weave.Command.SetProgress(progress).
@@ -50,17 +43,15 @@ class DBusCommandProxy : public weave::Command::Observer,
   bool SetResults(chromeos::ErrorPtr* error,
                   const chromeos::VariantDictionary& results) override;
   // Handles calls to com.android.Weave.Command.Abort().
-  void Abort() override;
+  bool Abort(chromeos::ErrorPtr* error) override;
   // Handles calls to com.android.Weave.Command.Cancel().
-  void Cancel() override;
+  bool Cancel(chromeos::ErrorPtr* error) override;
   // Handles calls to com.android.Weave.Command.Done().
-  void Done() override;
+  bool Done(chromeos::ErrorPtr* error) override;
 
-  weave::Command* command_;
+  std::weak_ptr<weave::Command> command_;
   com::android::Weave::CommandAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
-
-  ScopedObserver<weave::Command, weave::Command::Observer> observer_{this};
 
   friend class DBusCommandProxyTest;
   friend class DBusCommandDispacherTest;

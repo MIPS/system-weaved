@@ -88,7 +88,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
 LOCAL_REQUIRED_MODULES := \
 	avahi-daemon \
-	weaved.json \
 	com.android.Weave.conf \
 	webservd \
 
@@ -152,15 +151,6 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_conversion_unittest.cc \
 
 include $(BUILD_NATIVE_TEST)
-
-# Config files for /etc/weaved
-# ========================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := weaved.json
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/weaved/commands
-LOCAL_SRC_FILES := buffet/etc/weaved/commands/weaved.json
-include $(BUILD_PREBUILT)
 
 # DBus config files for /etc/dbus-1
 # ========================================================

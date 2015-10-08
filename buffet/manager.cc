@@ -10,6 +10,8 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
@@ -50,6 +52,74 @@ const char kPairingModeKey[] = "mode";
 const char kPairingCodeKey[] = "code";
 
 const char kErrorDomain[] = "buffet";
+const char kFileReadError[] = "file_read_error";
+
+bool LoadFile(const base::FilePath& file_path,
+              std::string* data,
+              chromeos::ErrorPtr* error) {
+  if (!base::ReadFileToString(file_path, data)) {
+    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                                 "Failed to read file '%s'",
+                                 file_path.value().c_str());
+    return false;
+  }
+  return true;
+}
+
+void LoadCommandDefinitions(const BuffetConfig::Options& options,
+                            weave::Device* device) {
+  auto load_packages = [device](const base::FilePath& root,
+                                const base::FilePath::StringType& pattern) {
+    base::FilePath dir{root.Append("commands")};
+    LOG(INFO) << "Looking for command schemas in " << dir.value();
+    base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
+                                    pattern);
+    for (base::FilePath path = enumerator.Next(); !path.empty();
+         path = enumerator.Next()) {
+      LOG(INFO) << "Loading command schema from " << path.value();
+      std::string json;
+      CHECK(LoadFile(path, &json, nullptr));
+      device->AddCommandDefinitionsFromJson(json);
+    }
+  };
+  load_packages(options.definitions, FILE_PATH_LITERAL("*.json"));
+  load_packages(options.test_definitions, FILE_PATH_LITERAL("*test.json"));
+}
+
+void LoadStateDefinitions(const BuffetConfig::Options& options,
+                          weave::Device* device) {
+  // Load component-specific device state definitions.
+  base::FilePath dir{options.definitions.Append("states")};
+  LOG(INFO) << "Looking for state definitions in " << dir.value();
+  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
+                                  FILE_PATH_LITERAL("*.schema.json"));
+  std::vector<std::string> result;
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    LOG(INFO) << "Loading state definition from " << path.value();
+    std::string json;
+    CHECK(LoadFile(path, &json, nullptr));
+    device->AddStateDefinitionsFromJson(json);
+  }
+}
+
+void LoadStateDefaults(const BuffetConfig::Options& options,
+                       weave::Device* device) {
+  // Load component-specific device state defaults.
+  base::FilePath dir{options.definitions.Append("states")};
+  LOG(INFO) << "Looking for state defaults in " << dir.value();
+  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
+                                  FILE_PATH_LITERAL("*.defaults.json"));
+  std::vector<std::string> result;
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    LOG(INFO) << "Loading state defaults from " << path.value();
+    std::string json;
+    CHECK(LoadFile(path, &json, nullptr));
+    CHECK(device->SetStatePropertiesFromJson(json, nullptr));
+  }
+}
 
 }  // anonymous namespace
 
@@ -62,32 +132,42 @@ class Manager::TaskRunner : public weave::provider::TaskRunner {
   }
 };
 
-Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
-    : dbus_object_(object_manager.get(),
+Manager::Manager(const Options& options,
+                 const base::WeakPtr<ExportedObjectManager>& object_manager)
+    : options_{options},
+      dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
-                   com::android::Weave::ManagerAdaptor::GetObjectPath()) {
-}
+                   com::android::Weave::ManagerAdaptor::GetObjectPath()) {}
 
 Manager::~Manager() {
 }
 
-void Manager::Start(const Options& options,
-                    const BuffetConfig::Options& paths,
-                    const std::set<std::string>& device_whitelist,
-                    AsyncEventSequencer* sequencer) {
+void Manager::Start(AsyncEventSequencer* sequencer) {
+  RestartWeave(sequencer);
+
+  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+}
+
+void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
+  Stop();
+
   task_runner_.reset(new TaskRunner{});
+  config_.reset(new BuffetConfig{options_.config_options});
   http_client_.reset(new HttpTransportClient);
-  shill_client_.reset(new ShillClient{dbus_object_.GetBus(), device_whitelist,
-                                      !options.xmpp_enabled});
+  shill_client_.reset(new ShillClient{dbus_object_.GetBus(),
+                                      options_.device_whitelist,
+                                      !options_.xmpp_enabled});
   weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
-  if (!options.disable_privet) {
+  if (!options_.disable_privet) {
     mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
     web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
     bluetooth_client_ = BluetoothClient::CreateInstance();
     http_server = web_serv_client_.get();
 
-    if (options.enable_ping) {
+    if (options_.enable_ping) {
       http_server->AddRequestHandler(
           "/privet/ping",
           base::Bind(
@@ -100,17 +180,20 @@ void Manager::Start(const Options& options,
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
 
-  config_.reset(new BuffetConfig{paths});
   device_ = weave::Device::Create(config_.get(), task_runner_.get(),
                                   http_client_.get(), shill_client_.get(),
                                   mdns_client_.get(), web_serv_client_.get(),
                                   shill_client_.get(), bluetooth_client_.get());
 
+  LoadCommandDefinitions(options_.config_options, device_.get());
+  LoadStateDefinitions(options_.config_options, device_.get());
+  LoadStateDefaults(options_.config_options, device_.get());
+
   device_->AddSettingsChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  command_dispatcher_.reset(new DBusCommandDispacher{
-      dbus_object_.GetObjectManager(), device_->GetCommands()});
+  command_dispatcher_.reset(
+      new DBusCommandDispacher{dbus_object_.GetObjectManager(), device_.get()});
 
   device_->AddStateChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
@@ -118,19 +201,22 @@ void Manager::Start(const Options& options,
   device_->AddGcdStateChangedCallback(
       base::Bind(&Manager::OnGcdStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  if (!options.disable_privet) {
-    device_->AddPairingChangedCallbacks(
-        base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
-  }
-
-  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+  device_->AddPairingChangedCallbacks(
+      base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Manager::Stop() {
+  command_dispatcher_.reset();
   device_.reset();
+#ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
+  web_serv_client_.reset();
+  mdns_client_.reset();
+#endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
+  shill_client_.reset();
+  http_client_.reset();
+  config_.reset();
+  task_runner_.reset();
 }
 
 void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
@@ -188,7 +274,7 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
   std::string id;
   weave::ErrorPtr error;
-  if (!device_->GetCommands()->AddCommand(*command, &id, &error)) {
+  if (!device_->AddCommand(*command, &id, &error)) {
     chromeos::ErrorPtr chromeos_error;
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
@@ -199,7 +285,7 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
 void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
                          const std::string& id) {
-  const weave::Command* command = device_->GetCommands()->FindCommand(id);
+  const weave::Command* command = device_->FindCommand(id);
   if (!command) {
     response->ReplyWithError(FROM_HERE, kErrorDomain, "unknown_command",
                              "Can't find command with id: " + id);

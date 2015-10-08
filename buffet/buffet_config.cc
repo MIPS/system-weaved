@@ -7,7 +7,6 @@
 #include <map>
 #include <set>
 
-#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
@@ -18,26 +17,6 @@
 #include <weave/enum_to_string.h>
 
 namespace buffet {
-
-namespace {
-
-const char kErrorDomain[] = "buffet";
-const char kFileReadError[] = "file_read_error";
-
-bool LoadFile(const base::FilePath& file_path,
-              std::string* data,
-              chromeos::ErrorPtr* error) {
-  if (!base::ReadFileToString(file_path, data)) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                                 "Failed to read file '%s'",
-                                 file_path.value().c_str());
-    return false;
-  }
-  return true;
-}
-
-}  // namespace
 
 namespace config_keys {
 
@@ -64,8 +43,8 @@ const char kPairingModes[] = "pairing_modes";
 BuffetConfig::BuffetConfig(const Options& options) : options_(options) {}
 
 bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
-  // Keep this hard coded default for sometime. This previously was set by
-  // libweave. It should be set by overlays buffet.conf.
+  // Keep this hardcoded default for sometime. This previously was set by
+  // libweave. It should be set by overlay's buffet.conf.
   settings->client_id = "58855907228.apps.googleusercontent.com";
   settings->client_secret = "eHSAREAHrIqPsHBxCE9zPPBi";
   settings->api_key = "AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA";
@@ -83,57 +62,18 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   bool result = LoadDefaults(store, settings);
   settings->disable_security = options_.disable_security;
   settings->test_privet_ssid = options_.test_privet_ssid;
-  return result;
-}
 
-std::map<std::string, std::string> BuffetConfig::LoadCommandDefs() {
-  std::map<std::string, std::string> result;
-  auto load_packages = [&result](const base::FilePath& root,
-                                 const base::FilePath::StringType& pattern) {
-    base::FilePath dir{root.Append("commands")};
-    VLOG(2) << "Looking for commands in " << dir.value();
-    base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                    pattern);
-    for (base::FilePath path = enumerator.Next(); !path.empty();
-         path = enumerator.Next()) {
-      LOG(INFO) << "Loading command schema from " << path.value();
-      std::string category = path.BaseName().RemoveExtension().value();
-      CHECK(LoadFile(path, &result[category], nullptr));
-    }
-  };
-  load_packages(options_.definitions, FILE_PATH_LITERAL("*.json"));
-  load_packages(options_.test_definitions, FILE_PATH_LITERAL("*test.json"));
-  return result;
-}
+  if (!options_.client_id.empty())
+    settings->client_id = options_.client_id;
+  if (!options_.client_secret.empty())
+    settings->client_secret = options_.client_secret;
+  if (!options_.api_key.empty())
+    settings->api_key = options_.api_key;
+  if (!options_.oauth_url.empty())
+    settings->oauth_url = options_.oauth_url;
+  if (!options_.service_url.empty())
+    settings->service_url = options_.service_url;
 
-std::map<std::string, std::string> BuffetConfig::LoadStateDefs() {
-  // Load component-specific device state definitions.
-  base::FilePath dir{options_.definitions.Append("states")};
-  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.schema.json"));
-  std::map<std::string, std::string> result;
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    LOG(INFO) << "Loading state definition from " << path.value();
-    std::string category = path.BaseName().RemoveExtension().value();
-    CHECK(LoadFile(path, &result[category], nullptr));
-  }
-  return result;
-}
-
-std::vector<std::string> BuffetConfig::LoadStateDefaults() {
-  // Load component-specific device state defaults.
-  base::FilePath dir{options_.definitions.Append("states")};
-  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.defaults.json"));
-  std::vector<std::string> result;
-  for (base::FilePath path = enumerator.Next(); !path.empty();
-       path = enumerator.Next()) {
-    LOG(INFO) << "Loading state defaults from " << path.value();
-    std::string json;
-    CHECK(LoadFile(path, &json, nullptr));
-    result.push_back(json);
-  }
   return result;
 }
 

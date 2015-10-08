@@ -23,6 +23,12 @@ class StorageInterface;
 class BuffetConfig final : public weave::provider::ConfigStore {
  public:
   struct Options {
+    std::string client_id;
+    std::string client_secret;
+    std::string api_key;
+    std::string oauth_url;
+    std::string service_url;
+
     base::FilePath defaults;
     base::FilePath settings;
 
@@ -41,9 +47,6 @@ class BuffetConfig final : public weave::provider::ConfigStore {
   bool LoadDefaults(weave::Settings* settings) override;
   std::string LoadSettings() override;
   void SaveSettings(const std::string& settings) override;
-  std::map<std::string, std::string> LoadCommandDefs() override;
-  std::map<std::string, std::string> LoadStateDefs() override;
-  std::vector<std::string> LoadStateDefaults() override;
 
   bool LoadDefaults(const chromeos::KeyValueStore& store,
                     weave::Settings* settings);
