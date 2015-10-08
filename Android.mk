@@ -48,6 +48,14 @@ buffetSharedLibraries := \
 	libweave \
 	libwebserv \
 
+ifdef BRILLO
+
+buffetSharedLibraries += \
+	libkeymaster_messages \
+	libkeystore_binder \
+
+endif
+
 # buffet-common
 # ========================================================
 include $(CLEAR_VARS)
@@ -79,6 +87,13 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/dbus-service-config.json \
 	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
 	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
+
+ifdef BRILLO
+LOCAL_SRC_FILES += buffet/keystore_encryptor.cc
+else
+LOCAL_SRC_FILES += buffet/fake_encryptor.cc
+endif
+
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -146,6 +161,7 @@ LOCAL_RTTI_FLAG := -frtti
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
+	buffet/buffet_config_unittest.cc \
 	buffet/buffet_testrunner.cc \
 	buffet/dbus_command_proxy_unittest.cc \
 	buffet/dbus_conversion_unittest.cc \

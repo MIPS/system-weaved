@@ -18,6 +18,24 @@
 
 namespace buffet {
 
+namespace {
+
+const char kErrorDomain[] = "buffet";
+const char kFileReadError[] = "file_read_error";
+
+class DefaultFileIO : public BuffetConfig::FileIO {
+ public:
+  bool ReadFile(const base::FilePath& path, std::string* content) override {
+    return base::ReadFileToString(path, content);
+  }
+  bool WriteFile(const base::FilePath& path,
+                 const std::string& content) override {
+    return base::ImportantFileWriter::WriteFileAtomically(path, content);
+  }
+};
+
+}  // namespace
+
 namespace config_keys {
 
 const char kClientId[] = "client_id";
@@ -40,7 +58,12 @@ const char kPairingModes[] = "pairing_modes";
 
 }  // namespace config_keys
 
-BuffetConfig::BuffetConfig(const Options& options) : options_(options) {}
+BuffetConfig::BuffetConfig(const Options& options)
+    : options_(options),
+      default_encryptor_(Encryptor::CreateDefaultEncryptor()),
+      encryptor_(default_encryptor_.get()),
+      default_file_io_(new DefaultFileIO),
+      file_io_(default_file_io_.get()) {}
 
 bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   // Keep this hardcoded default for sometime. This previously was set by
@@ -132,13 +155,43 @@ bool BuffetConfig::LoadDefaults(const chromeos::KeyValueStore& store,
 }
 
 std::string BuffetConfig::LoadSettings() {
+  std::string settings_blob;
+  if (!file_io_->ReadFile(options_.settings, &settings_blob)) {
+    LOG(WARNING) << "Failed to read settings, proceeding with empty settings.";
+    return std::string();
+  }
   std::string json_string;
-  base::ReadFileToString(options_.settings, &json_string);
+  if (!encryptor_->DecryptWithAuthentication(settings_blob, &json_string)) {
+    LOG(WARNING)
+        << "Failed to decrypt settings, proceeding with empty settings.";
+    SaveSettings(std::string());
+    return std::string();
+  }
   return json_string;
 }
 
 void BuffetConfig::SaveSettings(const std::string& settings) {
-  base::ImportantFileWriter::WriteFileAtomically(options_.settings, settings);
+  std::string encrypted_settings;
+  if (!encryptor_->EncryptWithAuthentication(settings, &encrypted_settings)) {
+    LOG(ERROR) << "Failed to encrypt settings, writing empty settings.";
+    encrypted_settings.clear();
+  }
+  if (!file_io_->WriteFile(options_.settings, encrypted_settings)) {
+    LOG(ERROR) << "Failed to write settings.";
+  }
+}
+
+bool BuffetConfig::LoadFile(const base::FilePath& file_path,
+                            std::string* data,
+                            chromeos::ErrorPtr* error) {
+  if (!file_io_->ReadFile(file_path, data)) {
+    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                                 "Failed to read file '%s'",
+                                 file_path.value().c_str());
+    return false;
+  }
+  return true;
 }
 
 }  // namespace buffet

@@ -7,6 +7,7 @@
 #include <set>
 
 #include <base/bind.h>
+#include <chromeos/data_encoding.h>
 #include <gtest/gtest.h>
 
 namespace buffet {
@@ -64,6 +65,86 @@ TEST(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ(weave::AuthScope::kUser, settings.local_anonymous_access_role);
   EXPECT_FALSE(settings.local_pairing_enabled);
   EXPECT_FALSE(settings.local_discovery_enabled);
+}
+
+class BuffetConfigTestWithFakes : public testing::Test,
+                                  public BuffetConfig::FileIO,
+                                  public Encryptor {
+ public:
+  void SetUp() {
+    BuffetConfig::Options config_options;
+    config_options.settings = base::FilePath{"settings_file"};
+    config_.reset(new BuffetConfig{config_options});
+    config_->SetEncryptor(this);
+    config_->SetFileIO(this);
+  };
+
+  // buffet::Encryptor methods.
+  bool EncryptWithAuthentication(const std::string& plaintext,
+                                 std::string* ciphertext) override {
+    *ciphertext = chromeos::data_encoding::Base64Encode(plaintext);
+    return encryptor_result_;
+  };
+  bool DecryptWithAuthentication(const std::string& ciphertext,
+                                 std::string* plaintext) override {
+    return encryptor_result_ &&
+           chromeos::data_encoding::Base64Decode(ciphertext, plaintext);
+  };
+
+  // buffet::BuffetConfig::FileIO methods.
+  bool ReadFile(const base::FilePath& path, std::string* content) override {
+    if (fake_file_content_.count(path.value()) == 0) {
+      return false;
+    }
+    *content = fake_file_content_[path.value()];
+    return io_result_;
+  };
+  bool WriteFile(const base::FilePath& path,
+                 const std::string& content) override {
+    if (io_result_) {
+      fake_file_content_[path.value()] = content;
+    }
+    return io_result_;
+  };
+
+ protected:
+  std::map<std::string, std::string> fake_file_content_;
+  bool encryptor_result_ = true;
+  bool io_result_ = true;
+  std::unique_ptr<BuffetConfig> config_;
+};
+
+TEST_F(BuffetConfigTestWithFakes, EncryptionEnabled) {
+  config_->SaveSettings("test");
+  ASSERT_NE("test", fake_file_content_["settings_file"]);
+  ASSERT_EQ("test", config_->LoadSettings());
+}
+
+TEST_F(BuffetConfigTestWithFakes, EncryptionFailure) {
+  config_->SaveSettings("test");
+  ASSERT_FALSE(fake_file_content_["settings_file"].empty());
+  encryptor_result_ = false;
+  config_->SaveSettings("test2");
+  // Encryption fails -> file cleared.
+  ASSERT_TRUE(fake_file_content_["settings_file"].empty());
+}
+
+TEST_F(BuffetConfigTestWithFakes, DecryptionFailure) {
+  config_->SaveSettings("test");
+  ASSERT_FALSE(fake_file_content_["settings_file"].empty());
+  encryptor_result_ = false;
+  // Decryption fails -> empty settings loaded.
+  ASSERT_TRUE(config_->LoadSettings().empty());
+}
+
+TEST_F(BuffetConfigTestWithFakes, SettingsIOFailure) {
+  config_->SaveSettings("test");
+  std::string original = fake_file_content_["settings_file"];
+  ASSERT_FALSE(original.empty());
+  io_result_ = false;
+  ASSERT_TRUE(config_->LoadSettings().empty());
+  config_->SaveSettings("test2");
+  ASSERT_EQ(original, fake_file_content_["settings_file"]);
 }
 
 }  // namespace buffet
