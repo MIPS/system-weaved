@@ -6,15 +6,22 @@
       <arg name="progress" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="SetResults">
+    <method name="Complete">
+      <tp:docstring>
+        Mark the command as successfully completed and specifies the command
+        results to be returned to the caller.
+      </tp:docstring>
       <arg name="results" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="Abort">
       <tp:docstring>
         Mark the command as aborted. This tells the cloud that the device did
-        not successfully complete executing the command.
+        not successfully complete executing the command. The error information
+        is provided in |code| and |message| parameters.
       </tp:docstring>
+      <arg name="code" type="s" direction="in"/>
+      <arg name="message" type="s" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="Cancel">
@@ -24,16 +31,9 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="Done">
-      <tp:docstring>
-        Mark the command as successfully completed.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
-    </method>
     <property name="Name" type="s" access="read"/>
-    <property name="Category" type="s" access="read"/>
     <property name="Id" type="s" access="read"/>
-    <property name="Status" type="s" access="read"/>
+    <property name="State" type="s" access="read"/>
     <property name="Parameters" type="a{sv}" access="read"/>
     <property name="Progress" type="a{sv}" access="read"/>
     <property name="Results" type="a{sv}" access="read"/>

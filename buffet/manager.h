@@ -72,6 +72,7 @@ class Manager final : public com::android::Weave::ManagerInterface {
 
  private:
   void RestartWeave(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+  void CreateDevice();
 
   // DBus methods:
   void RegisterDevice(DBusMethodResponsePtr<std::string> response,
@@ -81,8 +82,6 @@ class Manager final : public com::android::Weave::ManagerInterface {
   bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& json_command) override;
-  void GetCommand(DBusMethodResponsePtr<std::string> response,
-                  const std::string& id) override;
   std::string TestMethod(const std::string& message) override;
 
   void StartPrivet(const Options& options,

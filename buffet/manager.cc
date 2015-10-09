@@ -41,6 +41,7 @@
 #include "buffet/webserv_client.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
+using chromeos::dbus_utils::DBusMethodResponse;
 using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
@@ -121,6 +122,21 @@ void LoadStateDefaults(const BuffetConfig::Options& options,
   }
 }
 
+void RegisterDeviceSuccess(
+    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
+    weave::Device* device) {
+  LOG(INFO) << "Device registered: " << device->GetSettings().cloud_id;
+  response->Return(device->GetSettings().cloud_id);
+}
+
+void RegisterDeviceError(
+    const std::shared_ptr<DBusMethodResponse<std::string>>& response,
+    const weave::Error* weave_error) {
+  chromeos::ErrorPtr error;
+  ConvertError(*weave_error, &error);
+  response->ReplyWithError(error.get());
+}
+
 }  // anonymous namespace
 
 class Manager::TaskRunner : public weave::provider::TaskRunner {
@@ -163,22 +179,31 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options_.disable_privet) {
     mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
-    web_serv_client_.reset(new WebServClient{dbus_object_.GetBus(), sequencer});
+    web_serv_client_.reset(new WebServClient{
+        dbus_object_.GetBus(), sequencer,
+        base::Bind(&Manager::CreateDevice, weak_ptr_factory_.GetWeakPtr())});
     bluetooth_client_ = BluetoothClient::CreateInstance();
     http_server = web_serv_client_.get();
 
     if (options_.enable_ping) {
-      http_server->AddRequestHandler(
-          "/privet/ping",
-          base::Bind(
-              [](const weave::provider::HttpServer::Request& request,
-                 const weave::provider::HttpServer::OnReplyCallback& callback) {
-                callback.Run(chromeos::http::status_code::Ok, "Hello, world!",
-                             chromeos::mime::text::kPlain);
-              }));
+      auto ping_handler = base::Bind(
+          [](std::unique_ptr<weave::provider::HttpServer::Request> request) {
+        request->SendReply(chromeos::http::status_code::Ok, "Hello, world!",
+                           chromeos::mime::text::kPlain);
+      });
+      http_server->AddHttpRequestHandler("/privet/ping", ping_handler);
+      http_server->AddHttpsRequestHandler("/privet/ping", ping_handler);
     }
   }
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
+
+  if (!http_server)
+    CreateDevice();
+}
+
+void Manager::CreateDevice() {
+  if (device_)
+    return;
 
   device_ = weave::Device::Create(config_.get(), task_runner_.get(),
                                   http_client_.get(), shill_client_.get(),
@@ -223,15 +248,13 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
                              const std::string& ticket_id) {
   LOG(INFO) << "Received call to Manager.RegisterDevice()";
 
-  weave::ErrorPtr error;
-  std::string device_id = device_->Register(ticket_id, &error);
-  if (!device_id.empty()) {
-    response->Return(device_id);
-    return;
-  }
-  chromeos::ErrorPtr chromeos_error;
-  ConvertError(*error, &chromeos_error);
-  response->ReplyWithError(chromeos_error.get());
+  std::shared_ptr<DBusMethodResponse<std::string>> shared_response =
+      std::move(response);
+
+  device_->Register(
+      ticket_id,
+      base::Bind(&RegisterDeviceSuccess, shared_response, device_.get()),
+      base::Bind(&RegisterDeviceError, shared_response));
 }
 
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
@@ -281,20 +304,6 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
   }
 
   response->Return(id);
-}
-
-void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
-                         const std::string& id) {
-  const weave::Command* command = device_->FindCommand(id);
-  if (!command) {
-    response->ReplyWithError(FROM_HERE, kErrorDomain, "unknown_command",
-                             "Can't find command with id: " + id);
-    return;
-  }
-  std::string command_str;
-  base::JSONWriter::WriteWithOptions(
-      *command->ToJson(), base::JSONWriter::OPTIONS_PRETTY_PRINT, &command_str);
-  response->Return(command_str);
 }
 
 std::string Manager::TestMethod(const std::string& message) {

@@ -43,6 +43,10 @@ MATCHER_P(EqualToJson, json, "") {
   return IsEqualValue(*json_value, arg);
 }
 
+MATCHER_P2(ExpectError, code, message, "") {
+  return arg->GetCode() == code && arg->GetMessage() == message;
+}
+
 }  // namespace
 
 class DBusCommandProxyTest : public ::testing::Test {
@@ -62,10 +66,10 @@ class DBusCommandProxyTest : public ::testing::Test {
     // Use WillRepeatedly because GetName is used for logging.
     EXPECT_CALL(*command_, GetName())
         .WillRepeatedly(ReturnRefOfCopy<std::string>("robot.jump"));
-    EXPECT_CALL(*command_, GetStatus())
-        .WillRepeatedly(Return(weave::CommandStatus::kQueued));
+    EXPECT_CALL(*command_, GetState())
+        .WillRepeatedly(Return(weave::Command::State::kQueued));
     EXPECT_CALL(*command_, GetOrigin())
-        .WillOnce(Return(weave::CommandOrigin::kLocal));
+        .WillOnce(Return(weave::Command::Origin::kLocal));
     EXPECT_CALL(*command_, MockGetParameters())
         .WillOnce(ReturnRefOfCopy<std::string>(R"({
           'height': 53,
@@ -111,10 +115,10 @@ class DBusCommandProxyTest : public ::testing::Test {
     return GetCommandProxy();
   }
 
-  weave::CommandStatus GetCommandStatus() const {
-    weave::CommandStatus status;
-    EXPECT_TRUE(StringToEnum(GetCommandAdaptor()->GetStatus(), &status));
-    return status;
+  weave::Command::State GetCommandState() const {
+    weave::Command::State state;
+    EXPECT_TRUE(StringToEnum(GetCommandAdaptor()->GetState(), &state));
+    return state;
   }
 
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
@@ -128,7 +132,7 @@ TEST_F(DBusCommandProxyTest, Init) {
   VariantDictionary params = {
       {"height", int32_t{53}}, {"_jumpType", std::string{"_withKick"}},
   };
-  EXPECT_EQ(weave::CommandStatus::kQueued, GetCommandStatus());
+  EXPECT_EQ(weave::Command::State::kQueued, GetCommandState());
   EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
@@ -143,32 +147,28 @@ TEST_F(DBusCommandProxyTest, SetProgress) {
       GetCommandInterface()->SetProgress(nullptr, {{"progress", int32_t{10}}}));
 }
 
-TEST_F(DBusCommandProxyTest, SetResults) {
+TEST_F(DBusCommandProxyTest, Complete) {
   EXPECT_CALL(
       *command_,
-      SetResults(
+      Complete(
           EqualToJson("{'foo': 42, 'bar': 'foobar', 'resultList': [1, 2, 3]}"),
           _))
       .WillOnce(Return(true));
-  EXPECT_TRUE(GetCommandInterface()->SetResults(
+  EXPECT_TRUE(GetCommandInterface()->Complete(
       nullptr, VariantDictionary{{"foo", int32_t{42}},
                                  {"bar", std::string{"foobar"}},
                                  {"resultList", std::vector<int>{1, 2, 3}}}));
 }
 
 TEST_F(DBusCommandProxyTest, Abort) {
-  EXPECT_CALL(*command_, Abort());
-  EXPECT_TRUE(GetCommandInterface()->Abort(nullptr));
+  EXPECT_CALL(*command_, Abort(ExpectError("foo", "bar"), _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(GetCommandInterface()->Abort(nullptr, "foo", "bar"));
 }
 
 TEST_F(DBusCommandProxyTest, Cancel) {
-  EXPECT_CALL(*command_, Cancel());
+  EXPECT_CALL(*command_, Cancel(_)).WillOnce(Return(true));
   EXPECT_TRUE(GetCommandInterface()->Cancel(nullptr));
-}
-
-TEST_F(DBusCommandProxyTest, Done) {
-  EXPECT_CALL(*command_, Done());
-  EXPECT_TRUE(GetCommandInterface()->Done(nullptr));
 }
 
 }  // namespace buffet

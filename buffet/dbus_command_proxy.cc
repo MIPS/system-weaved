@@ -52,7 +52,7 @@ void DBusCommandProxy::RegisterAsync(
   // Set the initial property values before registering the DBus object.
   dbus_adaptor_.SetName(command->GetName());
   dbus_adaptor_.SetId(command->GetID());
-  dbus_adaptor_.SetStatus(EnumToString(command->GetStatus()));
+  dbus_adaptor_.SetState(EnumToString(command->GetState()));
   dbus_adaptor_.SetProgress(
       DictionaryToDBusVariantDictionary(*command->GetProgress()));
   dbus_adaptor_.SetOrigin(EnumToString(command->GetOrigin()));
@@ -84,40 +84,49 @@ bool DBusCommandProxy::SetProgress(
   }
   dbus_adaptor_.SetProgress(
       DictionaryToDBusVariantDictionary(*command->GetProgress()));
-  dbus_adaptor_.SetStatus(EnumToString(command->GetStatus()));
+  dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }
 
-bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
-                                  const chromeos::VariantDictionary& results) {
+bool DBusCommandProxy::Complete(chromeos::ErrorPtr* error,
+                                const chromeos::VariantDictionary& results) {
   auto command = command_.lock();
   if (!command)
     return ReportDestroyedError(error);
 
   LOG(INFO) << "Received call to Command<" << command->GetName()
-            << ">::SetResults()";
+            << ">::Complete()";
   auto dictionary = DictionaryFromDBusVariantDictionary(results, error);
   if (!dictionary)
     return false;
   weave::ErrorPtr weave_error;
-  if (!command->SetResults(*dictionary, &weave_error)) {
+  if (!command->Complete(*dictionary, &weave_error)) {
     ConvertError(*weave_error, error);
     return false;
   }
   dbus_adaptor_.SetProgress(
       DictionaryToDBusVariantDictionary(*command->GetProgress()));
+  dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }
 
-bool DBusCommandProxy::Abort(chromeos::ErrorPtr* error) {
+bool DBusCommandProxy::Abort(chromeos::ErrorPtr* error,
+                             const std::string& code,
+                             const std::string& message) {
   auto command = command_.lock();
   if (!command)
     return ReportDestroyedError(error);
 
   LOG(INFO) << "Received call to Command<" << command->GetName()
             << ">::Abort()";
-  command->Abort();
-  dbus_adaptor_.SetStatus(EnumToString(command->GetStatus()));
+  weave::ErrorPtr cmd_error;
+  weave::Error::AddTo(&cmd_error, FROM_HERE, "command_error", code, message);
+  weave::ErrorPtr weave_error;
+  if (!command->Abort(cmd_error.get(), &weave_error)) {
+    ConvertError(*weave_error, error);
+    return false;
+  }
+  dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }
 
@@ -128,22 +137,12 @@ bool DBusCommandProxy::Cancel(chromeos::ErrorPtr* error) {
 
   LOG(INFO) << "Received call to Command<" << command->GetName()
             << ">::Cancel()";
-  command->Cancel();
-  dbus_adaptor_.SetStatus(EnumToString(command->GetStatus()));
-  return true;
-}
-
-bool DBusCommandProxy::Done(chromeos::ErrorPtr* error) {
-  auto command = command_.lock();
-  if (!command)
-    return ReportDestroyedError(error);
-
-  LOG(INFO) << "Received call to Command<" << command->GetName()
-            << ">::Done()";
-  command->Done();
-  dbus_adaptor_.SetProgress(
-      DictionaryToDBusVariantDictionary(*command->GetProgress()));
-  dbus_adaptor_.SetStatus(EnumToString(command->GetStatus()));
+  weave::ErrorPtr weave_error;
+  if (!command->Cancel(&weave_error)) {
+    ConvertError(*weave_error, error);
+    return false;
+  }
+  dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }
 
