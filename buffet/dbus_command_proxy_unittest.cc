@@ -78,7 +78,7 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*command_, MockGetProgress())
         .WillRepeatedly(ReturnRefOfCopy<std::string>("{}"));
     EXPECT_CALL(*command_, MockGetResults())
-        .WillOnce(ReturnRefOfCopy<std::string>("{}"));
+        .WillRepeatedly(ReturnRefOfCopy<std::string>("{}"));
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
     std::string cmd_path = buffet::dbus_constants::kCommandServicePathPrefix;

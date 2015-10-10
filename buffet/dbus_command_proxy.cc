@@ -104,8 +104,8 @@ bool DBusCommandProxy::Complete(chromeos::ErrorPtr* error,
     ConvertError(*weave_error, error);
     return false;
   }
-  dbus_adaptor_.SetProgress(
-      DictionaryToDBusVariantDictionary(*command->GetProgress()));
+  dbus_adaptor_.SetResults(
+      DictionaryToDBusVariantDictionary(*command->GetResults()));
   dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }

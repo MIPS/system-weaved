@@ -36,17 +36,13 @@ class DBusCommandProxy : public com::android::Weave::CommandInterface {
           completion_callback);
 
  private:
-  // Handles calls to com.android.Weave.Command.SetProgress(progress).
   bool SetProgress(chromeos::ErrorPtr* error,
                    const chromeos::VariantDictionary& progress) override;
-  // Handles calls to com.android.Weave.Command.Complete(results).
   bool Complete(chromeos::ErrorPtr* error,
                 const chromeos::VariantDictionary& results) override;
-  // Handles calls to com.android.Weave.Command.Abort().
   bool Abort(chromeos::ErrorPtr* error,
              const std::string& code,
              const std::string& message) override;
-  // Handles calls to com.android.Weave.Command.Cancel().
   bool Cancel(chromeos::ErrorPtr* error) override;
 
   std::weak_ptr<weave::Command> command_;
