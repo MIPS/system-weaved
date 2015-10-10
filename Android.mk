@@ -94,16 +94,16 @@ else
 LOCAL_SRC_FILES += buffet/fake_encryptor.cc
 endif
 
-
 include $(BUILD_STATIC_LIBRARY)
 
-# buffet
+# weaved
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
 LOCAL_REQUIRED_MODULES := \
 	avahi-daemon \
 	com.android.Weave.conf \
+	libweaved \
 	webservd \
 
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
@@ -121,16 +121,41 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_EXECUTABLE)
 
-# libweaved-client
+# libweaved-internal
 # ========================================================
+# You do not want to depend on this.  Depend on libweaved instead.
+# libweaved abstracts and helps you consume this interface.
 include $(CLEAR_VARS)
-LOCAL_MODULE := libweaved-client
+LOCAL_MODULE := libweaved-internal
 LOCAL_DBUS_PROXY_PREFIX := buffet
 
 LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/dbus-service-config.json \
 	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
 	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
+
+include $(BUILD_SHARED_LIBRARY)
+
+# libweaved
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := libweaved
+LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
+LOCAL_CFLAGS := $(buffetCommonCFlags)
+LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
+LOCAL_C_INCLUDES := external/gtest/include
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
+LOCAL_SHARED_LIBRARIES := \
+	$(buffetSharedLibraries) \
+	libweaved-internal \
+
+LOCAL_STATIC_LIBRARIES :=
+LOCAL_RTTI_FLAG := -frtti
+LOCAL_CLANG := true
+
+LOCAL_SRC_FILES := \
+	libweaved/command.cc \
+	libweaved/device.cc \
 
 include $(BUILD_SHARED_LIBRARY)
 
