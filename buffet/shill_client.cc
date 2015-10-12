@@ -133,7 +133,7 @@ void ShillClient::Connect(const string& ssid,
     weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
                         "Already connecting to WiFi network");
     base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+        FROM_HERE, base::Bind(error_callback, base::Passed(&error)));
     return;
   }
   CleanupConnectingService();
@@ -157,7 +157,7 @@ void ShillClient::Connect(const string& ssid,
     ConvertError(*chromeos_error, &weave_error);
     base::MessageLoop::current()->PostTask(
         FROM_HERE,
-        base::Bind(error_callback, base::Owned(weave_error.release())));
+        base::Bind(error_callback, base::Passed(&weave_error)));
     return;
   }
   connecting_service_.reset(new ServiceProxy{bus_, service_path});
@@ -481,7 +481,7 @@ void ShillClient::OnErrorChangeForConnectingService(const std::string& error) {
                       "Failed to connect to WiFi network");
 
   if (!callback.is_null())
-    callback.Run(weave_error.get());
+    callback.Run(std::move(weave_error));
 }
 
 void ShillClient::OnStrengthChangeForConnectingService(
@@ -535,10 +535,9 @@ void ShillClient::UpdateConnectivityState() {
   // underway.  Therefore, call our callbacks later, when we're in a good
   // state.
   base::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&ShillClient::NotifyConnectivityListeners,
-                 weak_factory_.GetWeakPtr(),
-                 GetConnectionState() == Network::State::kOnline));
+      FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
+                            weak_factory_.GetWeakPtr(),
+                            GetConnectionState() == Network::State::kOnline));
 }
 
 void ShillClient::NotifyConnectivityListeners(bool am_online) {
@@ -560,9 +559,8 @@ void ShillClient::CleanupConnectingService() {
 void ShillClient::OpenSslSocket(
     const std::string& host,
     uint16_t port,
-    const base::Callback<void(std::unique_ptr<weave::Stream>)>&
-        success_callback,
-    const base::Callback<void(const weave::Error*)>& error_callback) {
+    const OpenSslSocketSuccessCallback& success_callback,
+    const weave::ErrorCallback& error_callback) {
   if (disable_xmpp_)
     return;
   std::unique_ptr<weave::Stream> raw_stream{
@@ -574,7 +572,7 @@ void ShillClient::OpenSslSocket(
     ConvertError(*error.get(), &weave_error);
     base::MessageLoop::current()->PostTask(
         FROM_HERE,
-        base::Bind(error_callback, base::Owned(weave_error.release())));
+        base::Bind(error_callback, base::Passed(&weave_error)));
     return;
   }
 

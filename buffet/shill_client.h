@@ -40,8 +40,7 @@ class ShillClient final : public weave::provider::Network,
   State GetConnectionState() const override;
   void OpenSslSocket(const std::string& host,
                      uint16_t port,
-                     const base::Callback<void(std::unique_ptr<weave::Stream>)>&
-                         success_callback,
+                     const OpenSslSocketSuccessCallback& success_callback,
                      const weave::ErrorCallback& error_callback) override;
 
   // WifiProvider implementation.
@@ -113,7 +112,7 @@ class ShillClient final : public weave::provider::Network,
   std::shared_ptr<org::chromium::flimflam::ServiceProxy> connecting_service_;
   std::string connecting_service_error_;
   base::Closure connect_success_callback_;
-  base::Callback<void(const weave::Error*)> connect_error_callback_;
+  weave::ErrorCallback connect_error_callback_;
 
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;

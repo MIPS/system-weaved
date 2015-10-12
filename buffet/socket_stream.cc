@@ -85,11 +85,11 @@ void OnSuccess(const base::Callback<void(std::unique_ptr<weave::Stream>)>&
       std::unique_ptr<weave::Stream>{new SocketStream{std::move(tls_stream)}});
 }
 
-void OnError(const base::Callback<void(const weave::Error*)>& error_callback,
+void OnError(const base::Callback<void(weave::ErrorPtr)>& error_callback,
              const chromeos::Error* chromeos_error) {
   weave::ErrorPtr error;
   ConvertError(*chromeos_error, &error);
-  error_callback.Run(error.get());
+  error_callback.Run(std::move(error));
 }
 
 }  // namespace
@@ -104,7 +104,7 @@ void SocketStream::Read(void* buffer,
     weave::ErrorPtr error;
     ConvertError(*chromeos_error, &error);
     base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+        FROM_HERE, base::Bind(error_callback, base::Passed(&error)));
   }
 }
 
@@ -119,7 +119,7 @@ void SocketStream::Write(const void* buffer,
     weave::ErrorPtr error;
     ConvertError(*chromeos_error, &error);
     base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(error_callback, base::Owned(error.release())));
+        FROM_HERE, base::Bind(error_callback, base::Passed(&error)));
   }
 }
 
