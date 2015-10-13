@@ -16,15 +16,15 @@
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
-#include <chromeos/bind_lambda.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/http/http_transport.h>
-#include <chromeos/http/http_utils.h>
-#include <chromeos/key_value_store.h>
-#include <chromeos/message_loops/message_loop.h>
-#include <chromeos/mime_utils.h>
+#include <brillo/bind_lambda.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/errors/error.h>
+#include <brillo/http/http_transport.h>
+#include <brillo/http/http_utils.h>
+#include <brillo/key_value_store.h>
+#include <brillo/message_loops/message_loop.h>
+#include <brillo/mime_utils.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
@@ -40,9 +40,9 @@
 #include "buffet/weave_error_conversion.h"
 #include "buffet/webserv_client.h"
 
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusMethodResponse;
-using chromeos::dbus_utils::ExportedObjectManager;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusMethodResponse;
+using brillo::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
 
@@ -57,12 +57,12 @@ const char kFileReadError[] = "file_read_error";
 
 bool LoadFile(const base::FilePath& file_path,
               std::string* data,
-              chromeos::ErrorPtr* error) {
+              brillo::ErrorPtr* error) {
   if (!base::ReadFileToString(file_path, data)) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
-                                 "Failed to read file '%s'",
-                                 file_path.value().c_str());
+    brillo::errors::system::AddSystemError(error, FROM_HERE, errno);
+    brillo::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                               "Failed to read file '%s'",
+                               file_path.value().c_str());
     return false;
   }
   return true;
@@ -132,7 +132,7 @@ void RegisterDeviceSuccess(
 void RegisterDeviceError(
     const std::shared_ptr<DBusMethodResponse<std::string>>& response,
     weave::ErrorPtr weave_error) {
-  chromeos::ErrorPtr error;
+  brillo::ErrorPtr error;
   ConvertError(*weave_error, &error);
   response->ReplyWithError(error.get());
 }
@@ -144,7 +144,7 @@ class Manager::TaskRunner : public weave::provider::TaskRunner {
   void PostDelayedTask(const tracked_objects::Location& from_here,
                        const base::Closure& task,
                        base::TimeDelta delay) override {
-    chromeos::MessageLoop::current()->PostDelayedTask(from_here, task, delay);
+    brillo::MessageLoop::current()->PostDelayedTask(from_here, task, delay);
   }
 };
 
@@ -188,8 +188,8 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
     if (options_.enable_ping) {
       auto ping_handler = base::Bind(
           [](std::unique_ptr<weave::provider::HttpServer::Request> request) {
-            request->SendReply(chromeos::http::status_code::Ok, "Hello, world!",
-                               chromeos::mime::text::kPlain);
+            request->SendReply(brillo::http::status_code::Ok, "Hello, world!",
+                               brillo::mime::text::kPlain);
           });
       http_server->AddHttpRequestHandler("/privet/ping", ping_handler);
       http_server->AddHttpsRequestHandler("/privet/ping", ping_handler);
@@ -257,8 +257,8 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
 }
 
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
-                          const chromeos::VariantDictionary& property_set) {
-  chromeos::ErrorPtr chromeos_error;
+                          const brillo::VariantDictionary& property_set) {
+  brillo::ErrorPtr chromeos_error;
   auto properties =
       DictionaryFromDBusVariantDictionary(property_set, &chromeos_error);
   if (!properties)
@@ -272,7 +272,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
   response->Return();
 }
 
-bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
+bool Manager::GetState(brillo::ErrorPtr* error, std::string* state) {
   auto json = device_->GetState();
   CHECK(json);
   base::JSONWriter::WriteWithOptions(
@@ -289,15 +289,15 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
           .release());
   const base::DictionaryValue* command{nullptr};
   if (!value || !value->GetAsDictionary(&command)) {
-    return response->ReplyWithError(FROM_HERE, chromeos::errors::json::kDomain,
-                                    chromeos::errors::json::kParseError,
+    return response->ReplyWithError(FROM_HERE, brillo::errors::json::kDomain,
+                                    brillo::errors::json::kParseError,
                                     error_message);
   }
 
   std::string id;
   weave::ErrorPtr error;
   if (!device_->AddCommand(*command, &id, &error)) {
-    chromeos::ErrorPtr chromeos_error;
+    brillo::ErrorPtr chromeos_error;
     ConvertError(*error, &chromeos_error);
     return response->ReplyWithError(chromeos_error.get());
   }
@@ -338,7 +338,7 @@ void Manager::OnPairingStart(const std::string& session_id,
                              const std::vector<uint8_t>& code) {
   // For now, just overwrite the exposed PairInfo with
   // the most recent pairing attempt.
-  dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{
+  dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{
       {kPairingSessionIdKey, session_id},
       {kPairingModeKey, weave::EnumToString(pairing_type)},
       {kPairingCodeKey, code},
@@ -353,7 +353,7 @@ void Manager::OnPairingEnd(const std::string& session_id) {
   }
   std::string exposed_session{it->second.TryGet<std::string>()};
   if (exposed_session == session_id) {
-    dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{});
+    dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{});
   }
 }
 

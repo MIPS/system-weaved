@@ -10,7 +10,7 @@
 
 #include <weave/provider/http_client.h>
 
-namespace chromeos {
+namespace brillo {
 namespace http {
 class Transport;
 }
@@ -32,7 +32,7 @@ class HttpTransportClient : public weave::provider::HttpClient {
                    const weave::ErrorCallback& error_callback) override;
 
  private:
-  std::shared_ptr<chromeos::http::Transport> transport_;
+  std::shared_ptr<brillo::http::Transport> transport_;
   DISALLOW_COPY_AND_ASSIGN(HttpTransportClient);
 };
 

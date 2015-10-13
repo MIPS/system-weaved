@@ -17,7 +17,7 @@
 #ifndef BUFFET_FLOURIDE_SOCKET_BLUETOOTH_CLIENT_H
 #define BUFFET_FLOURIDE_SOCKET_BLUETOOTH_CLIENT_H
 
-#include <chromeos/streams/stream.h>
+#include <brillo/streams/stream.h>
 
 #include "buffet/bluetooth_client.h"
 
@@ -38,7 +38,7 @@ class FlourideSocketBluetoothClient : public BluetoothClient {
  private:
   bool OpenSocket();
 
-  std::unique_ptr<chromeos::Stream> stream_;
+  std::unique_ptr<brillo::Stream> stream_;
 };
 
 }  // namespace buffet

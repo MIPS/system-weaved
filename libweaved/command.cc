@@ -62,27 +62,27 @@ Command::Origin Command::GetOrigin() const {
   return Command::Origin::kLocal;
 }
 
-const chromeos::VariantDictionary& Command::GetParameters() const {
+const brillo::VariantDictionary& Command::GetParameters() const {
   return proxy_->parameters();
 }
 
-bool Command::SetProgress(const chromeos::VariantDictionary& progress,
-                          chromeos::ErrorPtr* error) {
+bool Command::SetProgress(const brillo::VariantDictionary& progress,
+                          brillo::ErrorPtr* error) {
   return proxy_->SetProgress(progress, error);
 }
 
-bool Command::Complete(const chromeos::VariantDictionary& results,
-                       chromeos::ErrorPtr* error) {
+bool Command::Complete(const brillo::VariantDictionary& results,
+                       brillo::ErrorPtr* error) {
   return proxy_->Complete(results, error);
 }
 
 bool Command::Abort(const std::string& error_code,
                     const std::string& error_message,
-                    chromeos::ErrorPtr* error) {
+                    brillo::ErrorPtr* error) {
   return proxy_->Abort(error_code, error_message, error);
 }
 
-bool Command::Cancel(chromeos::ErrorPtr* error) {
+bool Command::Cancel(brillo::ErrorPtr* error) {
   return proxy_->Cancel(error);
 }
 

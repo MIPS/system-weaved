@@ -14,16 +14,16 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
-#include <chromeos/dbus/data_serialization.h>
-#include <chromeos/dbus/dbus_object.h>
-#include <chromeos/dbus/exported_property_set.h>
-#include <chromeos/errors/error.h>
+#include <brillo/dbus/data_serialization.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/exported_property_set.h>
+#include <brillo/errors/error.h>
 #include <weave/device.h>
 
 #include "buffet/buffet_config.h"
 #include "buffet/dbus_bindings/com.android.Weave.Manager.h"
 
-namespace chromeos {
+namespace brillo {
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
@@ -40,11 +40,11 @@ class WebServClient;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
-    std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<Types...>>;
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>;
 
 template<typename... Types>
 using DBusMethodResponse =
-    chromeos::dbus_utils::DBusMethodResponse<Types...>;
+    brillo::dbus_utils::DBusMethodResponse<Types...>;
 
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
@@ -62,30 +62,30 @@ class Manager final : public com::android::Weave::ManagerInterface {
 
   explicit Manager(
       const Options& options,
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+      const base::WeakPtr<brillo::dbus_utils::ExportedObjectManager>&
           object_manager);
   ~Manager();
 
-  void Start(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+  void Start(brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
   void Stop();
 
  private:
-  void RestartWeave(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+  void RestartWeave(brillo::dbus_utils::AsyncEventSequencer* sequencer);
   void CreateDevice();
 
   // DBus methods:
   void RegisterDevice(DBusMethodResponsePtr<std::string> response,
                       const std::string& ticket_id) override;
   void UpdateState(DBusMethodResponsePtr<> response,
-                   const chromeos::VariantDictionary& property_set) override;
-  bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
+                   const brillo::VariantDictionary& property_set) override;
+  bool GetState(brillo::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& json_command) override;
   std::string TestMethod(const std::string& message) override;
 
   void StartPrivet(const Options& options,
-                   chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+                   brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnStateChanged();
   void OnGcdStateChanged(weave::GcdState state);
@@ -98,7 +98,7 @@ class Manager final : public com::android::Weave::ManagerInterface {
   Options options_;
 
   com::android::Weave::ManagerAdaptor dbus_adaptor_{this};
-  chromeos::dbus_utils::DBusObject dbus_object_;
+  brillo::dbus_utils::DBusObject dbus_object_;
 
   class TaskRunner;
   std::unique_ptr<TaskRunner> task_runner_;

@@ -25,9 +25,9 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <chromeos/any.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/any.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <libweaved/command.h>
 #include <libweaved/export.h>
 
@@ -68,14 +68,14 @@ class LIBWEAVED_EXPORT Device final {
   void AddCommandHandler(const std::string& command_name,
                          const CommandHandlerCallback& callback);
 
-  bool SetStateProperties(const chromeos::VariantDictionary& dict,
-                          chromeos::ErrorPtr* error);
+  bool SetStateProperties(const brillo::VariantDictionary& dict,
+                          brillo::ErrorPtr* error);
 
   // Sets value of the single property.
   // |name| is full property name, including package name. e.g. "base.network".
   bool SetStateProperty(const std::string& name,
-                        const chromeos::Any& value,
-                        chromeos::ErrorPtr* error);
+                        const brillo::Any& value,
+                        brillo::ErrorPtr* error);
 
  private:
   Device(const scoped_refptr<dbus::Bus>& bus,

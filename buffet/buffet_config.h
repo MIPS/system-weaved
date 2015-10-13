@@ -12,8 +12,8 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/key_value_store.h>
+#include <brillo/errors/error.h>
+#include <brillo/key_value_store.h>
 #include <weave/provider/config_store.h>
 
 #include "buffet/encryptor.h"
@@ -59,7 +59,7 @@ class BuffetConfig final : public weave::provider::ConfigStore {
   std::string LoadSettings() override;
   void SaveSettings(const std::string& settings) override;
 
-  bool LoadDefaults(const chromeos::KeyValueStore& store,
+  bool LoadDefaults(const brillo::KeyValueStore& store,
                     weave::Settings* settings);
 
   // Allows injection of a non-default |encryptor| for testing. The caller
@@ -77,7 +77,7 @@ class BuffetConfig final : public weave::provider::ConfigStore {
  private:
   bool LoadFile(const base::FilePath& file_path,
                 std::string* data,
-                chromeos::ErrorPtr* error);
+                brillo::ErrorPtr* error);
 
   Options options_;
   std::unique_ptr<Encryptor> default_encryptor_;

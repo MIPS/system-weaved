@@ -14,21 +14,21 @@
 #include <base/format_macros.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
-#include <chromeos/daemons/dbus_daemon.h>
-#include <chromeos/map_utils.h>
-#include <chromeos/strings/string_utils.h>
-#include <chromeos/syslog_logging.h>
+#include <brillo/daemons/dbus_daemon.h>
+#include <brillo/map_utils.h>
+#include <brillo/strings/string_utils.h>
+#include <brillo/syslog_logging.h>
 
 #include "buffet/dbus-proxies.h"
 
 namespace {
 
 std::unique_ptr<base::DictionaryValue> DictionaryToJson(
-    const chromeos::VariantDictionary& dictionary);
+    const brillo::VariantDictionary& dictionary);
 
-std::unique_ptr<base::Value> AnyToJson(const chromeos::Any& value) {
-  if (value.IsTypeCompatible<chromeos::VariantDictionary>())
-    return DictionaryToJson(value.Get<chromeos::VariantDictionary>());
+std::unique_ptr<base::Value> AnyToJson(const brillo::Any& value) {
+  if (value.IsTypeCompatible<brillo::VariantDictionary>())
+    return DictionaryToJson(value.Get<brillo::VariantDictionary>());
 
   if (value.IsTypeCompatible<std::string>()) {
     return std::unique_ptr<base::Value>{
@@ -55,14 +55,14 @@ std::unique_ptr<base::Value> AnyToJson(const chromeos::Any& value) {
 }
 
 std::unique_ptr<base::DictionaryValue> DictionaryToJson(
-    const chromeos::VariantDictionary& dictionary) {
+    const brillo::VariantDictionary& dictionary) {
   std::unique_ptr<base::DictionaryValue> result{new base::DictionaryValue};
   for (const auto& it : dictionary)
     result->Set(it.first, AnyToJson(it.second).release());
   return result;
 }
 
-std::string DictionaryToString(const chromeos::VariantDictionary& dictionary) {
+std::string DictionaryToString(const brillo::VariantDictionary& dictionary) {
   std::unique_ptr<base::DictionaryValue> json{DictionaryToJson(dictionary)};
   std::string str;
   base::JSONWriter::Write(*json, &str);
@@ -71,7 +71,7 @@ std::string DictionaryToString(const chromeos::VariantDictionary& dictionary) {
 
 }  // anonymous namespace
 
-class Daemon final : public chromeos::DBusDaemon {
+class Daemon final : public brillo::DBusDaemon {
  public:
   Daemon() = default;
 
@@ -93,7 +93,7 @@ class Daemon final : public chromeos::DBusDaemon {
 };
 
 int Daemon::OnInit() {
-  int return_code = chromeos::DBusDaemon::OnInit();
+  int return_code = brillo::DBusDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
 
@@ -166,9 +166,9 @@ void Daemon::OnBuffetCommandRemoved(const dbus::ObjectPath& object_path) {
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog |
-                    chromeos::kLogToStderr |
-                    chromeos::kLogHeader);
+  brillo::InitLog(brillo::kLogToSyslog |
+                  brillo::kLogToStderr |
+                  brillo::kLogHeader);
   Daemon daemon;
   return daemon.Run();
 }

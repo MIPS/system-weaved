@@ -22,19 +22,19 @@
 #include <avahi-common/defs.h>
 #include <avahi-common/address.h>
 #include <base/guid.h>
-#include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/dbus_signal_handler.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/errors/error.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_signal_handler.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/errors/error.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 
-using chromeos::ErrorPtr;
-using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::CallMethodAndBlock;
-using chromeos::dbus_utils::ExtractMethodCallResults;
+using brillo::ErrorPtr;
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::CallMethodAndBlock;
+using brillo::dbus_utils::ExtractMethodCallResults;
 using CompletionAction =
-    chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+    brillo::dbus_utils::AsyncEventSequencer::CompletionAction;
 
 namespace buffet {
 
@@ -139,7 +139,7 @@ void AvahiMdnsClient::ConnectToAvahi() {
 
   // Reconnect to our signals on a new Avahi instance.
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  chromeos::dbus_utils::ConnectToSignal(
+  brillo::dbus_utils::ConnectToSignal(
       avahi_,
       dbus_constants::avahi::kServerInterface,
       dbus_constants::avahi::kServerSignalStateChanged,
@@ -191,7 +191,7 @@ void AvahiMdnsClient::CreateEntryGroup() {
     }
   };
 
-  chromeos::dbus_utils::ConnectToSignal(
+  brillo::dbus_utils::ConnectToSignal(
       entry_group_,
       dbus_constants::avahi::kGroupInterface,
       dbus_constants::avahi::kGroupSignalStateChanged,

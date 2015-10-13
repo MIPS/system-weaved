@@ -60,20 +60,20 @@ void Device::AddCommandHandler(const std::string& command_name,
   }
 }
 
-bool Device::SetStateProperties(const chromeos::VariantDictionary& dict,
-                                chromeos::ErrorPtr* error) {
+bool Device::SetStateProperties(const brillo::VariantDictionary& dict,
+                                brillo::ErrorPtr* error) {
   if (proxy_)
     return proxy_->UpdateState(dict, error);
 
-  chromeos::Error::AddTo(error, FROM_HERE, "weaved", "service_unavailable",
+  brillo::Error::AddTo(error, FROM_HERE, "weaved", "service_unavailable",
                          "Process 'weaved' is unreachable");
   return false;
 }
 
 bool Device::SetStateProperty(const std::string& name,
-                              const chromeos::Any& value,
-                              chromeos::ErrorPtr* error) {
-  return SetStateProperties(chromeos::VariantDictionary{{name, value}}, error);
+                              const brillo::Any& value,
+                              brillo::ErrorPtr* error) {
+  return SetStateProperties(brillo::VariantDictionary{{name, value}}, error);
 }
 
 void Device::OnCommandAdded(CommandProxy* proxy) {

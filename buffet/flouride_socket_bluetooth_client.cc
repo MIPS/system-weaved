@@ -19,7 +19,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include <chromeos/streams/file_stream.h>
+#include <brillo/streams/file_stream.h>
 
 namespace buffet {
 
@@ -55,7 +55,7 @@ bool FlourideSocketBluetoothClient::OpenSocket() {
     return false;
   }
 
-  stream_ = chromeos::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
+  stream_ = brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
   return true;
 }
 

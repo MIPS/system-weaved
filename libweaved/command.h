@@ -20,8 +20,8 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <libweaved/export.h>
 
 namespace com {
@@ -65,7 +65,7 @@ class LIBWEAVED_EXPORT Command final {
   Command::Origin GetOrigin() const;
 
   // Returns the command parameters.
-  const chromeos::VariantDictionary& GetParameters() const;
+  const brillo::VariantDictionary& GetParameters() const;
 
   // Helper function to get a command parameter of particular type T from the
   // command parameter list. Returns default value for type T (e.g. 0 for int or
@@ -73,7 +73,7 @@ class LIBWEAVED_EXPORT Command final {
   // is of incorrect type.
   template <typename T>
   T GetParameter(const std::string& name) const {
-    const chromeos::VariantDictionary& parameters = GetParameters();
+    const brillo::VariantDictionary& parameters = GetParameters();
     T value{};
     auto p = parameters.find(name);
     if (p != parameters.end())
@@ -83,24 +83,24 @@ class LIBWEAVED_EXPORT Command final {
 
   // Updates the command progress. The |progress| should match the schema.
   // Returns false if |progress| value is incorrect.
-  bool SetProgress(const chromeos::VariantDictionary& progress,
-                   chromeos::ErrorPtr* error);
+  bool SetProgress(const brillo::VariantDictionary& progress,
+                   brillo::ErrorPtr* error);
 
   // Sets command into terminal "done" state.
   // Updates the command results. The |results| should match the schema.
   // Returns false if |results| value is incorrect.
-  bool Complete(const chromeos::VariantDictionary& results,
-                chromeos::ErrorPtr* error);
+  bool Complete(const brillo::VariantDictionary& results,
+                brillo::ErrorPtr* error);
 
   // Aborts command execution.
   // Sets command into terminal "aborted" state.
   bool Abort(const std::string& error_code,
              const std::string& error_message,
-             chromeos::ErrorPtr* error);
+             brillo::ErrorPtr* error);
 
   // Cancels command execution.
   // Sets command into terminal "canceled" state.
-  bool Cancel(chromeos::ErrorPtr* error);
+  bool Cancel(brillo::ErrorPtr* error);
 
  protected:
   Command(com::android::Weave::CommandProxy* proxy);

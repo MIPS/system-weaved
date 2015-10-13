@@ -14,8 +14,8 @@
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/streams/file_stream.h>
-#include <chromeos/streams/tls_stream.h>
+#include <brillo/streams/file_stream.h>
+#include <brillo/streams/tls_stream.h>
 
 #include "buffet/socket_stream.h"
 #include "buffet/weave_error_conversion.h"
@@ -80,13 +80,13 @@ int ConnectSocket(const std::string& host, uint16_t port) {
 
 void OnSuccess(const base::Callback<void(std::unique_ptr<weave::Stream>)>&
                    success_callback,
-               chromeos::StreamPtr tls_stream) {
+               brillo::StreamPtr tls_stream) {
   success_callback.Run(
       std::unique_ptr<weave::Stream>{new SocketStream{std::move(tls_stream)}});
 }
 
 void OnError(const base::Callback<void(weave::ErrorPtr)>& error_callback,
-             const chromeos::Error* chromeos_error) {
+             const brillo::Error* chromeos_error) {
   weave::ErrorPtr error;
   ConvertError(*chromeos_error, &error);
   error_callback.Run(std::move(error));
@@ -98,7 +98,7 @@ void SocketStream::Read(void* buffer,
                         size_t size_to_read,
                         const ReadSuccessCallback& success_callback,
                         const weave::ErrorCallback& error_callback) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr chromeos_error;
   if (!ptr_->ReadAsync(buffer, size_to_read, success_callback,
                        base::Bind(&OnError, error_callback), &chromeos_error)) {
     weave::ErrorPtr error;
@@ -112,7 +112,7 @@ void SocketStream::Write(const void* buffer,
                          size_t size_to_write,
                          const weave::SuccessCallback& success_callback,
                          const weave::ErrorCallback& error_callback) {
-  chromeos::ErrorPtr chromeos_error;
+  brillo::ErrorPtr chromeos_error;
   if (!ptr_->WriteAllAsync(buffer, size_to_write, success_callback,
                            base::Bind(&OnError, error_callback),
                            &chromeos_error)) {
@@ -135,7 +135,7 @@ std::unique_ptr<weave::Stream> SocketStream::ConnectBlocking(
     return nullptr;
 
   auto ptr_ =
-      chromeos::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
+      brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
   if (ptr_)
     return std::unique_ptr<Stream>{new SocketStream{std::move(ptr_)}};
 
@@ -149,9 +149,9 @@ void SocketStream::TlsConnect(
     const base::Callback<void(std::unique_ptr<Stream>)>& success_callback,
     const weave::ErrorCallback& error_callback) {
   SocketStream* stream = static_cast<SocketStream*>(socket.get());
-  chromeos::TlsStream::Connect(std::move(stream->ptr_), host,
-                               base::Bind(&OnSuccess, success_callback),
-                               base::Bind(&OnError, error_callback));
+  brillo::TlsStream::Connect(std::move(stream->ptr_), host,
+                             base::Bind(&OnSuccess, success_callback),
+                             base::Bind(&OnError, error_callback));
 }
 
 }  // namespace buffet

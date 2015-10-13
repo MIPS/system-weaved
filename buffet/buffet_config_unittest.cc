@@ -7,13 +7,13 @@
 #include <set>
 
 #include <base/bind.h>
-#include <chromeos/data_encoding.h>
+#include <brillo/data_encoding.h>
 #include <gtest/gtest.h>
 
 namespace buffet {
 
 TEST(BuffetConfigTest, LoadConfig) {
-  chromeos::KeyValueStore config_store;
+  brillo::KeyValueStore config_store;
   config_store.SetString("client_id", "conf_client_id");
   config_store.SetString("client_secret", "conf_client_secret");
   config_store.SetString("api_key", "conf_api_key");
@@ -82,13 +82,13 @@ class BuffetConfigTestWithFakes : public testing::Test,
   // buffet::Encryptor methods.
   bool EncryptWithAuthentication(const std::string& plaintext,
                                  std::string* ciphertext) override {
-    *ciphertext = chromeos::data_encoding::Base64Encode(plaintext);
+    *ciphertext = brillo::data_encoding::Base64Encode(plaintext);
     return encryptor_result_;
   };
   bool DecryptWithAuthentication(const std::string& ciphertext,
                                  std::string* plaintext) override {
     return encryptor_result_ &&
-           chromeos::data_encoding::Base64Decode(ciphertext, plaintext);
+           brillo::data_encoding::Base64Decode(ciphertext, plaintext);
   };
 
   // buffet::BuffetConfig::FileIO methods.
