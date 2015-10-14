@@ -1,4 +1,4 @@
-on boot
+on post-fs-data
     mkdir /data/misc/weaved 0700 system system
 
 service weaved /system/bin/weaved
