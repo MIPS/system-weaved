@@ -10,6 +10,7 @@
 #include <base/stl_util.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 #include <dbus/shill/dbus-constants.h>
 #include <weave/enum_to_string.h>
 
@@ -126,14 +127,13 @@ void ShillClient::Init() {
 
 void ShillClient::Connect(const string& ssid,
                           const string& passphrase,
-                          const weave::SuccessCallback& success_callback,
-                          const weave::ErrorCallback& error_callback) {
+                          const weave::DoneCallback& callback) {
   if (connecting_service_) {
     weave::ErrorPtr error;
     weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
                         "Already connecting to WiFi network");
     base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(error_callback, base::Passed(&error)));
+        FROM_HERE, base::Bind(callback, base::Passed(&error)));
     return;
   }
   CleanupConnectingService();
@@ -149,21 +149,19 @@ void ShillClient::Connect(const string& ssid,
   service_properties[shill::kSaveCredentialsProperty] = Any{true};
   service_properties[shill::kAutoConnectProperty] = Any{true};
   ObjectPath service_path;
-  brillo::ErrorPtr chromeos_error;
+  brillo::ErrorPtr brillo_error;
   if (!manager_proxy_.ConfigureService(service_properties, &service_path,
-                                       &chromeos_error) ||
-      !manager_proxy_.RequestScan(shill::kTypeWifi, &chromeos_error)) {
+                                       &brillo_error) ||
+      !manager_proxy_.RequestScan(shill::kTypeWifi, &brillo_error)) {
     weave::ErrorPtr weave_error;
-    ConvertError(*chromeos_error, &weave_error);
+    ConvertError(*brillo_error, &weave_error);
     base::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(error_callback, base::Passed(&weave_error)));
+        FROM_HERE, base::Bind(callback, base::Passed(&weave_error)));
     return;
   }
   connecting_service_.reset(new ServiceProxy{bus_, service_path});
   connecting_service_->Connect(nullptr);
-  connect_success_callback_ = success_callback;
-  connect_error_callback_ = error_callback;
+  connect_done_callback_ = callback;
   connecting_service_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnServicePropertyChange,
                  weak_factory_.GetWeakPtr(), service_path),
@@ -178,7 +176,7 @@ void ShillClient::Connect(const string& ssid,
 void ShillClient::ConnectToServiceError(
     std::shared_ptr<org::chromium::flimflam::ServiceProxy> connecting_service) {
   if (connecting_service != connecting_service_ ||
-      connect_error_callback_.is_null()) {
+      connect_done_callback_.is_null()) {
     return;
   }
   std::string error = have_called_connect_ ? connecting_service_error_
@@ -452,11 +450,12 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
 void ShillClient::OnStateChangeForConnectingService(const string& state) {
   switch (ShillServiceStateToNetworkState(state)) {
     case Network::State::kOnline: {
-      auto callback = connect_success_callback_;
+      auto callback = connect_done_callback_;
+      connect_done_callback_.Reset();
       CleanupConnectingService();
 
       if (!callback.is_null())
-        callback.Run();
+        callback.Run(nullptr);
       break;
     }
     case Network::State::kError: {
@@ -473,7 +472,7 @@ void ShillClient::OnErrorChangeForConnectingService(const std::string& error) {
   if (error.empty())
     return;
 
-  auto callback = connect_error_callback_;
+  auto callback = connect_done_callback_;
   CleanupConnectingService();
 
   weave::ErrorPtr weave_error;
@@ -551,16 +550,13 @@ void ShillClient::CleanupConnectingService() {
     connecting_service_->ReleaseObjectProxy(base::Bind(&IgnoreDetachEvent));
     connecting_service_.reset();
   }
-  connect_success_callback_.Reset();
-  connect_error_callback_.Reset();
+  connect_done_callback_.Reset();
   have_called_connect_ = false;
 }
 
-void ShillClient::OpenSslSocket(
-    const std::string& host,
-    uint16_t port,
-    const OpenSslSocketSuccessCallback& success_callback,
-    const weave::ErrorCallback& error_callback) {
+void ShillClient::OpenSslSocket(const std::string& host,
+                                uint16_t port,
+                                const OpenSslSocketCallback& callback) {
   if (disable_xmpp_)
     return;
   std::unique_ptr<weave::Stream> raw_stream{
@@ -571,13 +567,11 @@ void ShillClient::OpenSslSocket(
     weave::ErrorPtr weave_error;
     ConvertError(*error.get(), &weave_error);
     base::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(error_callback, base::Passed(&weave_error)));
+        FROM_HERE, base::Bind(callback, nullptr, base::Passed(&weave_error)));
     return;
   }
 
-  SocketStream::TlsConnect(std::move(raw_stream), host, success_callback,
-                           error_callback);
+  SocketStream::TlsConnect(std::move(raw_stream), host, callback);
 }
 
 }  // namespace buffet

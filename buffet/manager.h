@@ -95,6 +95,9 @@ class Manager final : public com::android::Weave::ManagerInterface {
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
+  void RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
+                          weave::ErrorPtr error);
+
   Options options_;
 
   com::android::Weave::ManagerAdaptor dbus_adaptor_{this};

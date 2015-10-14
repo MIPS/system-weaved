@@ -11,9 +11,11 @@
 #include <unistd.h>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/bind_lambda.h>
 #include <brillo/streams/file_stream.h>
 #include <brillo/streams/tls_stream.h>
 
@@ -21,6 +23,8 @@
 #include "buffet/weave_error_conversion.h"
 
 namespace buffet {
+
+using weave::provider::Network;
 
 namespace {
 
@@ -78,48 +82,49 @@ int ConnectSocket(const std::string& host, uint16_t port) {
   return socket_fd;
 }
 
-void OnSuccess(const base::Callback<void(std::unique_ptr<weave::Stream>)>&
-                   success_callback,
+void OnSuccess(const Network::OpenSslSocketCallback& callback,
                brillo::StreamPtr tls_stream) {
-  success_callback.Run(
-      std::unique_ptr<weave::Stream>{new SocketStream{std::move(tls_stream)}});
+  callback.Run(
+      std::unique_ptr<weave::Stream>{new SocketStream{std::move(tls_stream)}},
+      nullptr);
 }
 
-void OnError(const base::Callback<void(weave::ErrorPtr)>& error_callback,
-             const brillo::Error* chromeos_error) {
+void OnError(const weave::DoneCallback& callback,
+             const brillo::Error* brillo_error) {
   weave::ErrorPtr error;
-  ConvertError(*chromeos_error, &error);
-  error_callback.Run(std::move(error));
+  ConvertError(*brillo_error, &error);
+  callback.Run(std::move(error));
 }
 
 }  // namespace
 
 void SocketStream::Read(void* buffer,
                         size_t size_to_read,
-                        const ReadSuccessCallback& success_callback,
-                        const weave::ErrorCallback& error_callback) {
-  brillo::ErrorPtr chromeos_error;
-  if (!ptr_->ReadAsync(buffer, size_to_read, success_callback,
-                       base::Bind(&OnError, error_callback), &chromeos_error)) {
+                        const ReadCallback& callback) {
+  brillo::ErrorPtr brillo_error;
+  if (!ptr_->ReadAsync(
+          buffer, size_to_read,
+          base::Bind([](const ReadCallback& callback,
+                        size_t size) { callback.Run(size, nullptr); },
+                     callback),
+          base::Bind(&OnError, base::Bind(callback, 0)), &brillo_error)) {
     weave::ErrorPtr error;
-    ConvertError(*chromeos_error, &error);
+    ConvertError(*brillo_error, &error);
     base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(error_callback, base::Passed(&error)));
+        FROM_HERE, base::Bind(callback, 0, base::Passed(&error)));
   }
 }
 
 void SocketStream::Write(const void* buffer,
                          size_t size_to_write,
-                         const weave::SuccessCallback& success_callback,
-                         const weave::ErrorCallback& error_callback) {
-  brillo::ErrorPtr chromeos_error;
-  if (!ptr_->WriteAllAsync(buffer, size_to_write, success_callback,
-                           base::Bind(&OnError, error_callback),
-                           &chromeos_error)) {
+                         const WriteCallback& callback) {
+  brillo::ErrorPtr brillo_error;
+  if (!ptr_->WriteAllAsync(buffer, size_to_write, base::Bind(callback, nullptr),
+                           base::Bind(&OnError, callback), &brillo_error)) {
     weave::ErrorPtr error;
-    ConvertError(*chromeos_error, &error);
+    ConvertError(*brillo_error, &error);
     base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(error_callback, base::Passed(&error)));
+        FROM_HERE, base::Bind(callback, base::Passed(&error)));
   }
 }
 
@@ -134,8 +139,7 @@ std::unique_ptr<weave::Stream> SocketStream::ConnectBlocking(
   if (socket_fd <= 0)
     return nullptr;
 
-  auto ptr_ =
-      brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
+  auto ptr_ = brillo::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
   if (ptr_)
     return std::unique_ptr<Stream>{new SocketStream{std::move(ptr_)}};
 
@@ -143,15 +147,13 @@ std::unique_ptr<weave::Stream> SocketStream::ConnectBlocking(
   return nullptr;
 }
 
-void SocketStream::TlsConnect(
-    std::unique_ptr<Stream> socket,
-    const std::string& host,
-    const base::Callback<void(std::unique_ptr<Stream>)>& success_callback,
-    const weave::ErrorCallback& error_callback) {
+void SocketStream::TlsConnect(std::unique_ptr<Stream> socket,
+                              const std::string& host,
+                              const Network::OpenSslSocketCallback& callback) {
   SocketStream* stream = static_cast<SocketStream*>(socket.get());
-  brillo::TlsStream::Connect(std::move(stream->ptr_), host,
-                             base::Bind(&OnSuccess, success_callback),
-                             base::Bind(&OnError, error_callback));
+  brillo::TlsStream::Connect(
+      std::move(stream->ptr_), host, base::Bind(&OnSuccess, callback),
+      base::Bind(&OnError, base::Bind(callback, nullptr)));
 }
 
 }  // namespace buffet
