@@ -147,8 +147,8 @@ void Manager::Start(AsyncEventSequencer* sequencer) {
   RestartWeave(sequencer);
 
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+  dbus_registration_handler_ =
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true);
 }
 
 void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
@@ -214,6 +214,12 @@ void Manager::CreateDevice() {
   device_->AddPairingChangedCallbacks(
       base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
+
+  auto handler = dbus_registration_handler_;
+  if (handler.is_null())
+    handler = AsyncEventSequencer::GetDefaultCompletionAction();
+  dbus_object_.RegisterAsync(handler);
+  dbus_registration_handler_.Reset();
 }
 
 void Manager::Stop() {

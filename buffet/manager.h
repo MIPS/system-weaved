@@ -113,6 +113,7 @@ class Manager final : public com::android::Weave::ManagerInterface {
   std::unique_ptr<WebServClient> web_serv_client_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
+  brillo::dbus_utils::AsyncEventSequencer::Handler dbus_registration_handler_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);
