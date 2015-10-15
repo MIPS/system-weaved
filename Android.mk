@@ -88,11 +88,11 @@ LOCAL_SRC_FILES := \
 	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
 	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
-ifdef BRILLO
-LOCAL_SRC_FILES += buffet/keystore_encryptor.cc
-else
+#ifdef BRILLO
+#LOCAL_SRC_FILES += buffet/keystore_encryptor.cc
+#else
 LOCAL_SRC_FILES += buffet/fake_encryptor.cc
-endif
+#endif
 
 include $(BUILD_STATIC_LIBRARY)
 
