@@ -138,6 +138,7 @@ void ShillClient::Init() {
 void ShillClient::Connect(const string& ssid,
                           const string& passphrase,
                           const weave::DoneCallback& callback) {
+  LOG(INFO) << "Connecting to WiFi network: " << ssid;
   if (connecting_service_) {
     weave::ErrorPtr error;
     weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
@@ -201,10 +202,12 @@ Network::State ShillClient::GetConnectionState() const {
 }
 
 void ShillClient::StartAccessPoint(const std::string& ssid) {
+  LOG(INFO) << "Starting Soft AP: " << ssid;
   ap_manager_client_->Start(ssid);
 }
 
 void ShillClient::StopAccessPoint() {
+  LOG(INFO) << "Stopping Soft AP";
   ap_manager_client_->Stop();
 }
 
