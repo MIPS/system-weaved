@@ -37,12 +37,12 @@ buffetCommonCIncludes := \
 buffetSharedLibraries := \
 	libapmanager-client \
 	libavahi-common \
+	libbrillo \
+	libbrillo-dbus \
+	libbrillo-http \
+	libbrillo-stream \
 	libchrome \
 	libchrome-dbus \
-	libchromeos \
-	libchromeos-dbus \
-	libchromeos-http \
-	libchromeos-stream \
 	libdbus \
 	libshill-client \
 	libweave \
@@ -175,9 +175,9 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_STATIC_LIBRARIES := \
 	buffet-common \
+	libbrillo-test-helpers \
 	libchrome_dbus_test_helpers \
 	libchrome_test_helpers \
-	libchromeos-test-helpers \
 	libgtest \
 	libgmock \
 	libweave-test \
