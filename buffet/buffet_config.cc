@@ -23,6 +23,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
+#include <brillo/osrelease_reader.h>
 #include <brillo/strings/string_utils.h>
 #include <weave/enum_to_string.h>
 
@@ -32,6 +33,7 @@ namespace {
 
 const char kErrorDomain[] = "buffet";
 const char kFileReadError[] = "file_read_error";
+const char kProductVersionKey[] = "product_version";
 
 class DefaultFileIO : public BuffetConfig::FileIO {
  public:
@@ -121,14 +123,10 @@ bool BuffetConfig::LoadDefaults(const brillo::KeyValueStore& store,
   store.GetString(config_keys::kModelName, &settings->model_name);
   store.GetString(config_keys::kModelId, &settings->model_id);
 
-  base::FilePath lsb_release_path("/etc/lsb-release");
-  brillo::KeyValueStore lsb_release_store;
-  if (lsb_release_store.Load(lsb_release_path) &&
-      lsb_release_store.GetString("CHROMEOS_RELEASE_VERSION",
-                                  &settings->firmware_version)) {
-  } else {
-    LOG(ERROR) << "Failed to get CHROMEOS_RELEASE_VERSION from "
-               << lsb_release_path.value();
+  brillo::OsReleaseReader reader;
+  reader.Load();
+  if (!reader.GetString(kProductVersionKey, &settings->firmware_version)) {
+    LOG(ERROR) << "Could not read '" << kProductVersionKey << "' from OS";
   }
 
   store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
