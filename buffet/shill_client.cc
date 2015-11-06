@@ -115,6 +115,8 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
                                      weak_factory_.GetWeakPtr());
   bus_->GetObjectProxy(shill::kFlimflamServiceName, ObjectPath{"/"})
       ->SetNameOwnerChangedCallback(owner_changed_cb);
+
+  Init();
 }
 
 ShillClient::~ShillClient() {}
@@ -266,6 +268,7 @@ void ShillClient::OnManagerPropertyChange(const string& property_name,
   if (property_name != shill::kDevicesProperty) {
     return;
   }
+  bool update_connectivity = false;
   VLOG(3) << "Manager's device list has changed.";
   // We're going to remove every device we haven't seen in the update.
   set<ObjectPath> device_paths_to_remove;
@@ -288,21 +291,23 @@ void ShillClient::OnManagerPropertyChange(const string& property_name,
     if (!IsMonitoredDevice(device.get())) {
       continue;
     }
-    device->RegisterPropertyChangedSignalHandler(
+    VLOG(3) << "Creating device proxy at " << device_path.value();
+    devices_[device_path].device = std::move(device);
+    update_connectivity = true;
+    devices_[device_path].device->RegisterPropertyChangedSignalHandler(
         base::Bind(&ShillClient::OnDevicePropertyChange,
                    weak_factory_.GetWeakPtr(), device_path),
         base::Bind(&ShillClient::OnDevicePropertyChangeRegistration,
                    weak_factory_.GetWeakPtr(), device_path));
-    VLOG(3) << "Creating device proxy at " << device_path.value();
-    devices_[device_path].device = std::move(device);
   }
   // Clean up devices/services related to removed devices.
-  if (!device_paths_to_remove.empty()) {
-    for (const ObjectPath& device_path : device_paths_to_remove) {
-      devices_.erase(device_path);
-    }
-    UpdateConnectivityState();
+  for (const ObjectPath& device_path : device_paths_to_remove) {
+    devices_.erase(device_path);
+    update_connectivity = true;
   }
+
+  if (update_connectivity)
+    UpdateConnectivityState();
 }
 
 void ShillClient::OnDevicePropertyChangeRegistration(
@@ -361,18 +366,17 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
     device_state.service_state = Network::State::kOffline;
     removed_old_service = true;
   }
-  std::shared_ptr<ServiceProxy> new_service;
   const bool reuse_connecting_service =
       service_path.value() != "/" && connecting_service_ &&
       connecting_service_->GetObjectPath() == service_path;
   if (reuse_connecting_service) {
-    new_service = connecting_service_;
+    device_state.selected_service = connecting_service_;
     // When we reuse the connecting service, we need to make sure that our
     // cached state is correct.  Normally, we do this by relying reading the
     // state when our signal handlers finish registering, but this may have
     // happened long in the past for the connecting service.
     string state;
-    if (GetStateForService(new_service.get(), &state)) {
+    if (GetStateForService(connecting_service_.get(), &state)) {
       device_state.service_state = ShillServiceStateToNetworkState(state);
     } else {
       LOG(WARNING) << "Failed to read properties from existing service "
@@ -380,14 +384,15 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
     }
   } else if (service_path.value() != "/") {
     // The device has selected a new service we haven't see before.
-    new_service.reset(new ServiceProxy{bus_, service_path});
-    new_service->RegisterPropertyChangedSignalHandler(
+    device_state.selected_service =
+        std::make_shared<ServiceProxy>(bus_, service_path);
+    device_state.selected_service->RegisterPropertyChangedSignalHandler(
         base::Bind(&ShillClient::OnServicePropertyChange,
                    weak_factory_.GetWeakPtr(), service_path),
         base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
                    weak_factory_.GetWeakPtr(), service_path));
   }
-  device_state.selected_service = new_service;
+
   if (reuse_connecting_service || removed_old_service) {
     UpdateConnectivityState();
   }

@@ -42,8 +42,6 @@ class ShillClient final : public weave::provider::Network,
               bool disable_xmpp);
   ~ShillClient();
 
-  void Init();
-
   // NetworkProvider implementation.
   void AddConnectionChangedCallback(
       const ConnectionChangedCallback& listener) override;
@@ -69,6 +67,8 @@ class ShillClient final : public weave::provider::Network,
     std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service;
     State service_state{State::kOffline};
   };
+
+  void Init();
 
   bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
   void OnShillServiceOwnerChange(const std::string& old_owner,
