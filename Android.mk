@@ -159,10 +159,11 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_SHARED_LIBRARY)
 
-# buffet_testrunner
+# weaved_test
 # ========================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE := buffet_testrunner
+LOCAL_MODULE := weaved_test
+LOCAL_MODULE_TAGS := debug
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
