@@ -43,6 +43,7 @@ buffetSharedLibraries := \
 	libbrillo-stream \
 	libchrome \
 	libchrome-dbus \
+	libcutils \
 	libdbus \
 	libshill-client \
 	libweave \
@@ -96,6 +97,21 @@ endif
 
 include $(BUILD_STATIC_LIBRARY)
 
+# weaved-brillo-api
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := weaved-brillo-api
+LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
+LOCAL_CFLAGS := $(buffetCommonCFlags)
+LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
+LOCAL_CLANG := true
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
+
+LOCAL_SRC_FILES := \
+	brillo/weaved_system_properties.cc \
+
+include $(BUILD_STATIC_LIBRARY)
+
 # weaved
 # ========================================================
 include $(CLEAR_VARS)
@@ -112,6 +128,7 @@ LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
 LOCAL_INIT_RC := weaved.rc
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
+LOCAL_STATIC_LIBRARIES := weaved-brillo-api
 LOCAL_WHOLE_STATIC_LIBRARIES := buffet-common
 LOCAL_CLANG := true
 LOCAL_RTTI_FLAG := -frtti
@@ -182,6 +199,7 @@ LOCAL_STATIC_LIBRARIES := \
 	libgtest \
 	libgmock \
 	libweave-test \
+	weaved-brillo-api \
 
 LOCAL_RTTI_FLAG := -frtti
 LOCAL_CLANG := true
