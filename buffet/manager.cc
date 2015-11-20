@@ -26,6 +26,7 @@
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <cutils/properties.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
@@ -40,6 +41,7 @@
 #include <dbus/values_util.h>
 #include <weave/enum_to_string.h>
 
+#include "brillo/weaved_system_properties.h"
 #include "buffet/bluetooth_client.h"
 #include "buffet/buffet_config.h"
 #include "buffet/dbus_command_dispatcher.h"
@@ -329,7 +331,9 @@ void Manager::OnStateChanged() {
 }
 
 void Manager::OnGcdStateChanged(weave::GcdState state) {
-  dbus_adaptor_.SetStatus(weave::EnumToString(state));
+  std::string state_string = weave::EnumToString(state);
+  dbus_adaptor_.SetStatus(state_string);
+  property_set(weaved::system_properties::kState, state_string.c_str());
 }
 
 void Manager::OnConfigChanged(const weave::Settings& settings) {
