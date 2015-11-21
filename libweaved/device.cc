@@ -33,7 +33,7 @@ Device::Device(const scoped_refptr<dbus::Bus>& bus,
       base::Bind(&Device::OnCommandRemoved, base::Unretained(this)));
   weaved_object_mgr_->SetManagerAddedCallback(
       base::Bind(&Device::OnManagerAdded, base::Unretained(this)));
-  weaved_object_mgr_->SetCommandRemovedCallback(
+  weaved_object_mgr_->SetManagerRemovedCallback(
       base::Bind(&Device::OnManagerRemoved, base::Unretained(this)));
 }
 
