@@ -284,10 +284,9 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
 }
 
 bool Manager::GetState(brillo::ErrorPtr* error, std::string* state) {
-  auto json = device_->GetState();
-  CHECK(json);
+  const base::DictionaryValue& json = device_->GetState();
   base::JSONWriter::WriteWithOptions(
-      *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
+      json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
   return true;
 }
 
@@ -322,11 +321,10 @@ std::string Manager::TestMethod(const std::string& message) {
 }
 
 void Manager::OnStateChanged() {
-  auto state = device_->GetState();
-  CHECK(state);
+  const base::DictionaryValue& state = device_->GetState();
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      *state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+      state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   dbus_adaptor_.SetState(json);
 }
 
