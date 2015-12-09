@@ -87,7 +87,11 @@ class Manager final : public com::android::Weave::ManagerInterface {
   // DBus methods:
   void RegisterDevice(DBusMethodResponsePtr<std::string> response,
                       const std::string& ticket_id) override;
+  void AddComponent(DBusMethodResponsePtr<> response,
+                    const std::string& name,
+                    const std::vector<std::string>& traits) override;
   void UpdateState(DBusMethodResponsePtr<> response,
+                   const std::string& component,
                    const brillo::VariantDictionary& property_set) override;
   bool GetState(brillo::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,

@@ -46,13 +46,39 @@ std::unique_ptr<Device> Device::CreateInstance(
   return std::unique_ptr<Device>{new Device{bus, state_required_callback}};
 }
 
-void Device::AddCommandHandler(const std::string& command_name,
+void Device::AddComponent(const std::string& component,
+                          const std::vector<std::string>& traits) {
+  ComponentEntry entry;
+  entry.component = component;
+  entry.traits = traits;
+  components_.push_back(std::move(entry));
+  if (proxy_)
+    proxy_->AddComponent(component, traits, nullptr);
+}
+
+void Device::AddCommandHandler(const std::string& component,
+                               const std::string& command_name,
                                const CommandHandlerCallback& callback) {
-  command_handler_map_.emplace(command_name, callback);
+  for (const auto& entry : command_handlers_) {
+    if (entry.command_name != command_name)
+      continue;
+    // The command names are the same, make sure we have different components.
+    // This means that both component names are not empty and are different.
+    CHECK(!component.empty() && !entry.component.empty() &&
+          component != entry.component)
+        << "Handler for " << component << ":" << command_name << " already set";
+  }
+  CommandHandlerEntry entry;
+  entry.component = component;
+  entry.command_name = command_name;
+  entry.callback = callback;
+
+  command_handlers_.push_back(std::move(entry));
 
   // If there are any commands already received, call the handler immediately.
   for (auto& pair : command_map_) {
-    if (pair.first->name() == command_name) {
+    if (pair.first->name() == command_name &&
+        (component.empty() || pair.first->component() == component)) {
       if (!pair.second)
         pair.second.reset(new Command{pair.first});
       callback.Run(pair.second);
@@ -60,30 +86,49 @@ void Device::AddCommandHandler(const std::string& command_name,
   }
 }
 
-bool Device::SetStateProperties(const brillo::VariantDictionary& dict,
+bool Device::SetStateProperties(const std::string& component,
+                                const brillo::VariantDictionary& dict,
                                 brillo::ErrorPtr* error) {
   if (proxy_)
-    return proxy_->UpdateState(dict, error);
+    return proxy_->UpdateState(component, dict, error);
 
   brillo::Error::AddTo(error, FROM_HERE, "weaved", "service_unavailable",
-                         "Process 'weaved' is unreachable");
+                       "Process 'weaved' is unreachable");
   return false;
+}
+
+bool Device::SetStateProperty(const std::string& component,
+                              const std::string& name,
+                              const brillo::Any& value,
+                              brillo::ErrorPtr* error) {
+  return SetStateProperties(component, brillo::VariantDictionary{{name, value}},
+                            error);
+}
+
+void Device::AddCommandHandler(const std::string& command_name,
+                               const CommandHandlerCallback& callback) {
+  AddCommandHandler("", command_name, callback);
+}
+
+bool Device::SetStateProperties(const brillo::VariantDictionary& dict,
+                                brillo::ErrorPtr* error) {
+  return SetStateProperties("", dict, error);
 }
 
 bool Device::SetStateProperty(const std::string& name,
                               const brillo::Any& value,
                               brillo::ErrorPtr* error) {
-  return SetStateProperties(brillo::VariantDictionary{{name, value}}, error);
+  return SetStateProperty("", name, value, error);
 }
 
 void Device::OnCommandAdded(CommandProxyInterface* proxy) {
   std::shared_ptr<Command>& command = command_map_[proxy];
-  auto iter = command_handler_map_.find(proxy->name());
-  if (iter == command_handler_map_.end())
+  const Device::CommandHandlerCallback* callback = FindHandlerForCommand(proxy);
+  if (!callback)
     return;
   if (!command)
     command.reset(new Command{proxy});
-  iter->second.Run(command);
+  callback->Run(command);
 }
 
 void Device::OnCommandRemoved(const dbus::ObjectPath& object_path) {
@@ -95,11 +140,25 @@ void Device::OnCommandRemoved(const dbus::ObjectPath& object_path) {
 
 void Device::OnManagerAdded(ManagerProxyInterface* proxy) {
   proxy_ = proxy;
+  for (const auto& entry : components_)
+    proxy_->AddComponent(entry.component, entry.traits, nullptr);
   state_required_callback_.Run();
 }
 
 void Device::OnManagerRemoved(const dbus::ObjectPath& object_path) {
   proxy_ = nullptr;
 }
+
+const Device::CommandHandlerCallback* Device::FindHandlerForCommand(
+    com::android::Weave::CommandProxyInterface* proxy) const {
+  for (const auto& entry : command_handlers_) {
+    if (proxy->name() == entry.command_name &&
+        (entry.component.empty() || proxy->component() == entry.component)) {
+      return &entry.callback;
+    }
+  }
+  return nullptr;
+}
+
 
 }  // namespace weave

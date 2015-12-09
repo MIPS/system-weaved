@@ -37,6 +37,30 @@ namespace weaved {
 
 class Device;
 
+namespace detail {
+
+// Helper function for Command::GetParameter<T>. Allows specialization.
+template <typename T>
+inline bool GetValue(const brillo::Any& any, T* value) {
+  return any.GetValue<T>(value);
+}
+
+// Specialization for double, allow to extract a double from an int.
+template <>
+inline bool GetValue<double>(const brillo::Any& any, double* value) {
+  if (any.GetValue<double>(value))
+    return true;
+
+  int int_val = 0;
+  if (!any.GetValue<int>(&int_val))
+    return false;
+
+  *value = static_cast<double>(int_val);
+  return true;
+}
+
+}  // namespace detail
+
 class LIBWEAVED_EXPORT Command final {
  public:
   enum class State {
@@ -58,6 +82,9 @@ class LIBWEAVED_EXPORT Command final {
   // Returns the full name of the command.
   const std::string& GetName() const;
 
+  // Returns the name of the component this command was sent to.
+  const std::string& GetComponent() const;
+
   // Returns the command state.
   Command::State GetState() const;
 
@@ -77,7 +104,7 @@ class LIBWEAVED_EXPORT Command final {
     T value{};
     auto p = parameters.find(name);
     if (p != parameters.end())
-      p->second.GetValue<T>(&value);
+      detail::GetValue<T>(p->second, &value);
     return value;
   }
 

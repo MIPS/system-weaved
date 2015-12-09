@@ -18,4 +18,6 @@
 #define LIBWEAVED_EXPORT __attribute__((__visibility__("default")))
 #define LIBWEAVED_PRIVATE __attribute__((__visibility__("hidden")))
 
+#define LIBWEAVED_DEPRECATED __attribute__((deprecated))
+
 #endif  // LIBWEAVED_EXPORT_H_
