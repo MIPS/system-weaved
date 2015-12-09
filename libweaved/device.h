@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -60,22 +61,43 @@ class LIBWEAVED_EXPORT Device final {
   using CommandHandlerCallback =
       base::Callback<void(const std::weak_ptr<Command>& command)>;
 
+  void AddComponent(const std::string& component,
+                    const std::vector<std::string>& traits);
+
   // Sets handler for new commands added to the queue.
   // |command_name| is the full command name of the command to handle. e.g.
   // "base.reboot". Each command can have no more than one handler.
-  // Empty |command_name| sets default handler for all unhanded commands.
-  // No new command handlers can be set after default handler was set.
-  void AddCommandHandler(const std::string& command_name,
+  void AddCommandHandler(const std::string& component,
+                         const std::string& command_name,
                          const CommandHandlerCallback& callback);
 
-  bool SetStateProperties(const brillo::VariantDictionary& dict,
+  bool SetStateProperties(const std::string& component,
+                          const brillo::VariantDictionary& dict,
                           brillo::ErrorPtr* error);
 
   // Sets value of the single property.
   // |name| is full property name, including package name. e.g. "base.network".
-  bool SetStateProperty(const std::string& name,
+  bool SetStateProperty(const std::string& component,
+                        const std::string& name,
                         const brillo::Any& value,
                         brillo::ErrorPtr* error);
+
+  // Sets handler for new commands added to the queue.
+  // |command_name| is the full command name of the command to handle. e.g.
+  // "base.reboot". Each command can have no more than one handler.
+  LIBWEAVED_DEPRECATED void AddCommandHandler(
+      const std::string& command_name,
+      const CommandHandlerCallback& callback);
+
+  LIBWEAVED_DEPRECATED bool SetStateProperties(
+      const brillo::VariantDictionary& dict,
+      brillo::ErrorPtr* error);
+
+  // Sets value of the single property.
+  // |name| is full property name, including package name. e.g. "base.network".
+  LIBWEAVED_DEPRECATED bool SetStateProperty(const std::string& name,
+                                             const brillo::Any& value,
+                                             brillo::ErrorPtr* error);
 
  private:
   Device(const scoped_refptr<dbus::Bus>& bus,
@@ -87,13 +109,29 @@ class LIBWEAVED_EXPORT Device final {
   void OnManagerAdded(com::android::Weave::ManagerProxyInterface* proxy);
   void OnManagerRemoved(const dbus::ObjectPath& object_path);
 
+  const CommandHandlerCallback* FindHandlerForCommand(
+      com::android::Weave::CommandProxyInterface* proxy) const;
+
   std::unique_ptr<com::android::Weave::ObjectManagerProxy> weaved_object_mgr_;
   com::android::Weave::ManagerProxyInterface* proxy_{nullptr};
 
   using CommandMap = std::map<com::android::Weave::CommandProxyInterface*,
                               std::shared_ptr<Command>>;
   CommandMap command_map_;
-  std::map<std::string, CommandHandlerCallback> command_handler_map_;
+
+  struct CommandHandlerEntry {
+    std::string component;
+    std::string command_name;
+    CommandHandlerCallback callback;
+  };
+  std::vector<CommandHandlerEntry> command_handlers_;
+
+  struct ComponentEntry {
+    std::string component;
+    std::vector<std::string> traits;
+  };
+  std::vector<ComponentEntry> components_;
+
   scoped_refptr<dbus::Bus> bus_;
   base::Closure state_required_callback_;
 

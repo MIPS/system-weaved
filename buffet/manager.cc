@@ -80,6 +80,23 @@ bool LoadFile(const base::FilePath& file_path,
   return true;
 }
 
+void LoadTraitDefinitions(const BuffetConfig::Options& options,
+                          weave::Device* device) {
+  // Load component-specific device trait definitions.
+  base::FilePath dir{options.definitions.Append("traits")};
+  LOG(INFO) << "Looking for trait definitions in " << dir.value();
+  base::FileEnumerator enumerator(dir, false, base::FileEnumerator::FILES,
+                                  FILE_PATH_LITERAL("*.json"));
+  std::vector<std::string> result;
+  for (base::FilePath path = enumerator.Next(); !path.empty();
+       path = enumerator.Next()) {
+    LOG(INFO) << "Loading trait definition from " << path.value();
+    std::string json;
+    CHECK(LoadFile(path, &json, nullptr));
+    device->AddTraitDefinitionsFromJson(json);
+  }
+}
+
 void LoadCommandDefinitions(const BuffetConfig::Options& options,
                             weave::Device* device) {
   auto load_packages = [device](const base::FilePath& root,
@@ -97,7 +114,8 @@ void LoadCommandDefinitions(const BuffetConfig::Options& options,
     }
   };
   load_packages(options.definitions, FILE_PATH_LITERAL("*.json"));
-  load_packages(options.test_definitions, FILE_PATH_LITERAL("*test.json"));
+  if (!options.test_definitions.empty())
+    load_packages(options.test_definitions, FILE_PATH_LITERAL("*test.json"));
 }
 
 void LoadStateDefinitions(const BuffetConfig::Options& options,
@@ -207,6 +225,7 @@ void Manager::CreateDevice() {
                                   mdns_client_.get(), web_serv_client_.get(),
                                   shill_client_.get(), bluetooth_client_.get());
 
+  LoadTraitDefinitions(options_.config_options, device_.get());
   LoadCommandDefinitions(options_.config_options, device_.get());
   LoadStateDefinitions(options_.config_options, device_.get());
   LoadStateDefaults(options_.config_options, device_.get());
@@ -267,7 +286,20 @@ void Manager::RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
   response->Return(device_->GetSettings().cloud_id);
 }
 
+void Manager::AddComponent(DBusMethodResponsePtr<> response,
+                           const std::string& name,
+                           const std::vector<std::string>& traits) {
+  brillo::ErrorPtr brillo_error;
+  weave::ErrorPtr error;
+  if (!device_->AddComponent(name, traits, &error)) {
+    ConvertError(*error, &brillo_error);
+    return response->ReplyWithError(brillo_error.get());
+  }
+  response->Return();
+}
+
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
+                          const std::string& component,
                           const brillo::VariantDictionary& property_set) {
   brillo::ErrorPtr brillo_error;
   auto properties =
@@ -276,7 +308,7 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
     return response->ReplyWithError(brillo_error.get());
 
   weave::ErrorPtr error;
-  if (!device_->SetStateProperties(*properties, &error)) {
+  if (!device_->SetStateProperties(component, *properties, &error)) {
     ConvertError(*error, &brillo_error);
     return response->ReplyWithError(brillo_error.get());
   }

@@ -62,6 +62,7 @@ void DBusCommandProxy::RegisterAsync(
   // Set the initial property values before registering the DBus object.
   dbus_adaptor_.SetName(command->GetName());
   dbus_adaptor_.SetId(command->GetID());
+  dbus_adaptor_.SetComponent(command->GetComponent());
   dbus_adaptor_.SetState(EnumToString(command->GetState()));
   dbus_adaptor_.SetProgress(
       DictionaryToDBusVariantDictionary(command->GetProgress()));

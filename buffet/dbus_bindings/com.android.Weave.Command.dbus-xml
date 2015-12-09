@@ -33,6 +33,7 @@
     </method>
     <property name="Name" type="s" access="read"/>
     <property name="Id" type="s" access="read"/>
+    <property name="Component" type="s" access="read"/>
     <property name="State" type="s" access="read"/>
     <property name="Parameters" type="a{sv}" access="read"/>
     <property name="Progress" type="a{sv}" access="read"/>

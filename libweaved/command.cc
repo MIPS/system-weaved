@@ -31,6 +31,10 @@ const std::string& Command::GetName() const {
   return proxy_->name();
 }
 
+const std::string& Command::GetComponent() const {
+  return proxy_->component();
+}
+
 Command::State Command::GetState() const {
   std::string state = proxy_->state();
   if (state == "queued")
