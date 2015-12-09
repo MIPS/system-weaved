@@ -20,7 +20,8 @@
 
 namespace weaved {
 
-Command::Command(com::android::Weave::CommandProxy* proxy) : proxy_{proxy} {}
+Command::Command(com::android::Weave::CommandProxyInterface* proxy)
+    : proxy_{proxy} {}
 
 const std::string& Command::GetID() const {
   return proxy_->id();
