@@ -27,7 +27,7 @@
 namespace com {
 namespace android {
 namespace Weave {
-class CommandProxy;
+class CommandProxyInterface;
 }  // namespace Weave
 }  // namespace android
 }  // namespace com
@@ -103,11 +103,11 @@ class LIBWEAVED_EXPORT Command final {
   bool Cancel(brillo::ErrorPtr* error);
 
  protected:
-  Command(com::android::Weave::CommandProxy* proxy);
+  Command(com::android::Weave::CommandProxyInterface* proxy);
 
  private:
   friend class Device;
-  com::android::Weave::CommandProxy* proxy_{nullptr};
+  com::android::Weave::CommandProxyInterface* proxy_{nullptr};
 
   DISALLOW_COPY_AND_ASSIGN(Command);
 };

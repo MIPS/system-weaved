@@ -34,8 +34,8 @@
 namespace com {
 namespace android {
 namespace Weave {
-class CommandProxy;
-class ManagerProxy;
+class CommandProxyInterface;
+class ManagerProxyInterface;
 class ObjectManagerProxy;
 }  // namespace Weave
 }  // namespace android
@@ -81,17 +81,17 @@ class LIBWEAVED_EXPORT Device final {
   Device(const scoped_refptr<dbus::Bus>& bus,
          const base::Closure& state_required_callback);
 
-  void OnCommandAdded(com::android::Weave::CommandProxy* proxy);
+  void OnCommandAdded(com::android::Weave::CommandProxyInterface* proxy);
   void OnCommandRemoved(const dbus::ObjectPath& object_path);
 
-  void OnManagerAdded(com::android::Weave::ManagerProxy* proxy);
+  void OnManagerAdded(com::android::Weave::ManagerProxyInterface* proxy);
   void OnManagerRemoved(const dbus::ObjectPath& object_path);
 
   std::unique_ptr<com::android::Weave::ObjectManagerProxy> weaved_object_mgr_;
-  com::android::Weave::ManagerProxy* proxy_{nullptr};
+  com::android::Weave::ManagerProxyInterface* proxy_{nullptr};
 
-  using CommandMap =
-      std::map<com::android::Weave::CommandProxy*, std::shared_ptr<Command>>;
+  using CommandMap = std::map<com::android::Weave::CommandProxyInterface*,
+                              std::shared_ptr<Command>>;
   CommandMap command_map_;
   std::map<std::string, CommandHandlerCallback> command_handler_map_;
   scoped_refptr<dbus::Bus> bus_;

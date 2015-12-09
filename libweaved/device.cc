@@ -18,8 +18,8 @@
 
 #include "buffet/dbus-proxies.h"
 
-using com::android::Weave::CommandProxy;
-using com::android::Weave::ManagerProxy;
+using com::android::Weave::CommandProxyInterface;
+using com::android::Weave::ManagerProxyInterface;
 
 namespace weaved {
 
@@ -76,7 +76,7 @@ bool Device::SetStateProperty(const std::string& name,
   return SetStateProperties(brillo::VariantDictionary{{name, value}}, error);
 }
 
-void Device::OnCommandAdded(CommandProxy* proxy) {
+void Device::OnCommandAdded(CommandProxyInterface* proxy) {
   std::shared_ptr<Command>& command = command_map_[proxy];
   auto iter = command_handler_map_.find(proxy->name());
   if (iter == command_handler_map_.end())
@@ -93,7 +93,7 @@ void Device::OnCommandRemoved(const dbus::ObjectPath& object_path) {
   command_map_.erase(proxy);
 }
 
-void Device::OnManagerAdded(ManagerProxy* proxy) {
+void Device::OnManagerAdded(ManagerProxyInterface* proxy) {
   proxy_ = proxy;
   state_required_callback_.Run();
 }
