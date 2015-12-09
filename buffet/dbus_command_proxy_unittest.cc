@@ -36,6 +36,7 @@ namespace buffet {
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::ReturnRefOfCopy;
 using ::testing::StrictMock;
 
@@ -71,6 +72,8 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
 
+    expected_result_dict_.SetInteger("height", 53);
+    expected_result_dict_.SetString("_jumpType", "_withKick");
     EXPECT_CALL(*command_, GetID())
         .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandId));
     // Use WillRepeatedly because GetName is used for logging.
@@ -80,15 +83,12 @@ class DBusCommandProxyTest : public ::testing::Test {
         .WillRepeatedly(Return(weave::Command::State::kQueued));
     EXPECT_CALL(*command_, GetOrigin())
         .WillOnce(Return(weave::Command::Origin::kLocal));
-    EXPECT_CALL(*command_, MockGetParameters())
-        .WillOnce(ReturnRefOfCopy<std::string>(R"({
-          'height': 53,
-          '_jumpType': '_withKick'
-        })"));
-    EXPECT_CALL(*command_, MockGetProgress())
-        .WillRepeatedly(ReturnRefOfCopy<std::string>("{}"));
-    EXPECT_CALL(*command_, MockGetResults())
-        .WillRepeatedly(ReturnRefOfCopy<std::string>("{}"));
+    EXPECT_CALL(*command_, GetParameters())
+        .WillOnce(ReturnRef(expected_result_dict_));
+    EXPECT_CALL(*command_, GetProgress())
+        .WillRepeatedly(ReturnRef(empty_dict_));
+    EXPECT_CALL(*command_, GetResults())
+        .WillRepeatedly(ReturnRef(empty_dict_));
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
     std::string cmd_path = buffet::dbus_constants::kCommandServicePathPrefix;
@@ -133,6 +133,8 @@ class DBusCommandProxyTest : public ::testing::Test {
 
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
+  base::DictionaryValue empty_dict_;
+  base::DictionaryValue expected_result_dict_;
 
   std::shared_ptr<StrictMock<weave::test::MockCommand>> command_;
   std::unique_ptr<DBusCommandProxy> proxy_;

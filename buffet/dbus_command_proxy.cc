@@ -64,12 +64,12 @@ void DBusCommandProxy::RegisterAsync(
   dbus_adaptor_.SetId(command->GetID());
   dbus_adaptor_.SetState(EnumToString(command->GetState()));
   dbus_adaptor_.SetProgress(
-      DictionaryToDBusVariantDictionary(*command->GetProgress()));
+      DictionaryToDBusVariantDictionary(command->GetProgress()));
   dbus_adaptor_.SetOrigin(EnumToString(command->GetOrigin()));
   dbus_adaptor_.SetParameters(
-      DictionaryToDBusVariantDictionary(*command->GetParameters()));
+      DictionaryToDBusVariantDictionary(command->GetParameters()));
   dbus_adaptor_.SetResults(
-      DictionaryToDBusVariantDictionary(*command->GetResults()));
+      DictionaryToDBusVariantDictionary(command->GetResults()));
 
   // Register the command DBus object and expose its methods and properties.
   dbus_object_.RegisterAsync(completion_callback);
@@ -93,7 +93,7 @@ bool DBusCommandProxy::SetProgress(
     return false;
   }
   dbus_adaptor_.SetProgress(
-      DictionaryToDBusVariantDictionary(*command->GetProgress()));
+      DictionaryToDBusVariantDictionary(command->GetProgress()));
   dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }
@@ -115,7 +115,7 @@ bool DBusCommandProxy::Complete(brillo::ErrorPtr* error,
     return false;
   }
   dbus_adaptor_.SetResults(
-      DictionaryToDBusVariantDictionary(*command->GetResults()));
+      DictionaryToDBusVariantDictionary(command->GetResults()));
   dbus_adaptor_.SetState(EnumToString(command->GetState()));
   return true;
 }
