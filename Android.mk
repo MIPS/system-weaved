@@ -63,7 +63,9 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := buffet-common
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
-LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
+# TODO(avakulenko): Remove -Wno-deprecated-declarations when legacy libweave
+# APIs are removed (see: b/25917708).
+LOCAL_CPPFLAGS := $(buffetCommonCppFlags) -Wno-deprecated-declarations
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
 LOCAL_STATIC_LIBRARIES :=

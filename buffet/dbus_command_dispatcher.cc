@@ -30,7 +30,7 @@ DBusCommandDispacher::DBusCommandDispacher(
     const base::WeakPtr<ExportedObjectManager>& object_manager,
     weave::Device* device)
     : object_manager_{object_manager} {
-  device->AddCommandHandler("",
+  device->AddCommandHandler("", "",
                             base::Bind(&DBusCommandDispacher::OnCommandAdded,
                                        weak_ptr_factory_.GetWeakPtr()));
 }
