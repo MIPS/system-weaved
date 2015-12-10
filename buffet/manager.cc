@@ -236,8 +236,15 @@ void Manager::CreateDevice() {
   command_dispatcher_.reset(
       new DBusCommandDispacher{dbus_object_.GetObjectManager(), device_.get()});
 
+  device_->AddTraitDefsChangedCallback(
+      base::Bind(&Manager::OnTraitDefsChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
   device_->AddStateChangedCallback(
-      base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&Manager::OnComponentTreeChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
+  device_->AddComponentTreeChangedCallback(
+      base::Bind(&Manager::OnComponentTreeChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
 
   device_->AddGcdStateChangedCallback(
       base::Bind(&Manager::OnGcdStateChanged, weak_ptr_factory_.GetWeakPtr()));
@@ -315,13 +322,6 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
   response->Return();
 }
 
-bool Manager::GetState(brillo::ErrorPtr* error, std::string* state) {
-  const base::DictionaryValue& json = device_->GetState();
-  base::JSONWriter::WriteWithOptions(
-      json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
-  return true;
-}
-
 void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
                          const std::string& json_command) {
   std::string error_message;
@@ -352,12 +352,20 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-void Manager::OnStateChanged() {
-  const base::DictionaryValue& state = device_->GetState();
+void Manager::OnTraitDefsChanged() {
+  const base::DictionaryValue& state = device_->GetTraits();
   std::string json;
   base::JSONWriter::WriteWithOptions(
       state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
-  dbus_adaptor_.SetState(json);
+  dbus_adaptor_.SetTraits(json);
+}
+
+void Manager::OnComponentTreeChanged() {
+  const base::DictionaryValue& state = device_->GetComponents();
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+  dbus_adaptor_.SetComponents(json);
 }
 
 void Manager::OnGcdStateChanged(weave::GcdState state) {

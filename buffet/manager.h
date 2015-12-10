@@ -93,7 +93,6 @@ class Manager final : public com::android::Weave::ManagerInterface {
   void UpdateState(DBusMethodResponsePtr<> response,
                    const std::string& component,
                    const brillo::VariantDictionary& property_set) override;
-  bool GetState(brillo::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& json_command) override;
   std::string TestMethod(const std::string& message) override;
@@ -101,7 +100,8 @@ class Manager final : public com::android::Weave::ManagerInterface {
   void StartPrivet(const Options& options,
                    brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
-  void OnStateChanged();
+  void OnTraitDefsChanged();
+  void OnComponentTreeChanged();
   void OnGcdStateChanged(weave::GcdState state);
   void OnConfigChanged(const weave::Settings& settings);
   void OnPairingStart(const std::string& session_id,
