@@ -39,8 +39,7 @@ class MdnsClient : public weave::provider::DnsServiceDiscovery {
                       const std::vector<std::string>& txt) override {}
   void StopPublishing(const std::string& service_type) override {}
 
-  static std::unique_ptr<MdnsClient> CreateInstance(
-      const scoped_refptr<dbus::Bus>& bus);
+  static std::unique_ptr<MdnsClient> CreateInstance();
 
  protected:
   DISALLOW_COPY_AND_ASSIGN(MdnsClient);

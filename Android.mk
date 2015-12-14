@@ -37,6 +37,7 @@ buffetCommonCIncludes := \
 buffetSharedLibraries := \
 	libapmanager-client \
 	libavahi-common \
+	libavahi-client \
 	libbrillo \
 	libbrillo-dbus \
 	libbrillo-http \

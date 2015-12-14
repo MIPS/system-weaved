@@ -18,8 +18,7 @@
 
 namespace buffet {
 
-std::unique_ptr<MdnsClient> MdnsClient::CreateInstance(
-    const scoped_refptr<dbus::Bus> &bus) {
+std::unique_ptr<MdnsClient> MdnsClient::CreateInstance() {
   return std::unique_ptr<MdnsClient>{new MdnsClient};
 }
 
