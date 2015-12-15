@@ -20,8 +20,9 @@
 #include <map>
 #include <string>
 
-#include <base/memory/weak_ptr.h>
-#include <dbus/bus.h>
+#include <avahi-client/client.h>
+#include <avahi-client/publish.h>
+#include <avahi-common/thread-watch.h>
 
 #include "buffet/mdns_client.h"
 
@@ -30,7 +31,7 @@ namespace buffet {
 // Publishes privet service on mDns using Avahi.
 class AvahiMdnsClient : public MdnsClient {
  public:
-  explicit AvahiMdnsClient(const scoped_refptr<dbus::Bus>& bus);
+  explicit AvahiMdnsClient();
   ~AvahiMdnsClient() override;
 
   // weave::provider::DnsServiceDiscovery implementation.
@@ -39,52 +40,16 @@ class AvahiMdnsClient : public MdnsClient {
   void StopPublishing(const std::string& service_type) override;
 
  private:
-  using TxtRecord = std::vector<std::vector<uint8_t>>;
-
-  // States used to track progress of our asynchronous dbus operations.
-  enum AsyncState {
-    UNDEF,
-    PENDING,
-    READY,
-    ERROR
-  };
-
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* avahi_{nullptr};
-  // The avahi interface we use to add/remove mdns services.
-  dbus::ObjectProxy* entry_group_{nullptr};
-
-  // State of our dbus connection to avahi.
-  AsyncState avahi_state_{UNDEF};
-  // State of the group/service publish operation.
-  AsyncState service_state_{UNDEF};
-
+  uint16_t prev_port_{0};
+  std::string prev_type_;
   std::string service_name_;
-  std::string service_type_;
-  uint16_t port_{0};
-  TxtRecord txt_;
+  std::unique_ptr<AvahiThreadedPoll, decltype(&avahi_threaded_poll_free)>
+      thread_pool_{nullptr, &avahi_threaded_poll_free};
+  std::unique_ptr< ::AvahiClient, decltype(&avahi_client_free)> client_{
+      nullptr, &avahi_client_free};
+  std::unique_ptr<AvahiEntryGroup, decltype(&avahi_entry_group_free)> group_{
+      nullptr, &avahi_entry_group_free};
 
-  // Must be last member to invalidate pointers before actual destruction.
-  base::WeakPtrFactory<AvahiMdnsClient> weak_ptr_factory_{this};
-
-  // Convert a {string:string} text record into something we can send over
-  // dbus.
-  static TxtRecord GetTxtRecord(const std::vector<std::string>& txt);
-
-  void ConnectToAvahi();
-  void CreateEntryGroup();
-  void FreeEntryGroup();
-  void CreateService();
-  void UpdateServiceTxt();
-
-  void OnAvahiOwnerChanged(const std::string& old_owner,
-                           const std::string& new_owner);
-  void OnAvahiStateChanged(int32_t state,
-                           const std::string& error);
-  void OnAvahiAvailable(bool avahi_is_on_dbus);
-  void HandleAvahiStateChange(int32_t state);
-  void HandleGroupStateChanged(int32_t state,
-                               const std::string& error_message);
   DISALLOW_COPY_AND_ASSIGN(AvahiMdnsClient);
 };
 

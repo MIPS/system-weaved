@@ -193,7 +193,7 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   weave::provider::HttpServer* http_server{nullptr};
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   if (!options_.disable_privet) {
-    mdns_client_ = MdnsClient::CreateInstance(dbus_object_.GetBus());
+    mdns_client_ = MdnsClient::CreateInstance();
     web_serv_client_.reset(new WebServClient{
         dbus_object_.GetBus(), sequencer,
         base::Bind(&Manager::CreateDevice, weak_ptr_factory_.GetWeakPtr())});
