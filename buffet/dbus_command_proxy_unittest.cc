@@ -79,6 +79,8 @@ class DBusCommandProxyTest : public ::testing::Test {
     // Use WillRepeatedly because GetName is used for logging.
     EXPECT_CALL(*command_, GetName())
         .WillRepeatedly(ReturnRefOfCopy<std::string>("robot.jump"));
+    EXPECT_CALL(*command_, GetComponent())
+        .WillRepeatedly(ReturnRefOfCopy<std::string>("myComponent"));
     EXPECT_CALL(*command_, GetState())
         .WillRepeatedly(Return(weave::Command::State::kQueued));
     EXPECT_CALL(*command_, GetOrigin())
@@ -149,6 +151,7 @@ TEST_F(DBusCommandProxyTest, Init) {
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
   EXPECT_EQ("robot.jump", GetCommandAdaptor()->GetName());
+  EXPECT_EQ("myComponent", GetCommandAdaptor()->GetComponent());
   EXPECT_EQ(kTestCommandId, GetCommandAdaptor()->GetId());
 }
 
