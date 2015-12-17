@@ -54,8 +54,9 @@ AvahiMdnsClient::AvahiMdnsClient()
 
   int ret = 0;
 
-  client_.reset(avahi_client_new(avahi_threaded_poll_get(thread_pool_.get()),
-                                 {}, nullptr, this, &ret));
+  client_.reset(avahi_client_new(
+      avahi_threaded_poll_get(thread_pool_.get()), {},
+      &AvahiMdnsClient::OnAvahiClientStateUpdate, this, &ret));
   CHECK(client_) << avahi_strerror(ret);
 
   avahi_threaded_poll_start(thread_pool_.get());
@@ -71,13 +72,16 @@ AvahiMdnsClient::~AvahiMdnsClient() {
     avahi_threaded_poll_stop(thread_pool_.get());
 }
 
-// TODO(rginda): Report errors back to the caller.
-// TODO(rginda): Support publishing more than one service.
 void AvahiMdnsClient::PublishService(const std::string& service_type,
                                      uint16_t port,
                                      const std::vector<std::string>& txt) {
   CHECK(group_);
   CHECK_EQ("_privet._tcp", service_type);
+
+  if (prev_port_ == port && prev_service_type_ == service_type &&
+      txt_records_ == txt) {
+    return;
+  }
 
   // Create txt record.
   std::unique_ptr<AvahiStringList, decltype(&avahi_string_list_free)> txt_list{
@@ -95,8 +99,9 @@ void AvahiMdnsClient::PublishService(const std::string& service_type,
   }
 
   int ret = 0;
+  txt_records_ = txt;
 
-  if (prev_port_ == port && prev_type_ == service_type) {
+  if (prev_port_ == port && prev_service_type_ == service_type) {
     ret = avahi_entry_group_update_service_txt_strlst(
         group_.get(), AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, {},
         service_name_.c_str(), service_type.c_str(), nullptr, txt_list.get());
@@ -104,7 +109,7 @@ void AvahiMdnsClient::PublishService(const std::string& service_type,
     CHECK_GE(ret, 0) << avahi_strerror(ret);
   } else {
     prev_port_ = port;
-    prev_type_ = service_type;
+    prev_service_type_ = service_type;
 
     avahi_entry_group_reset(group_.get());
     CHECK(avahi_entry_group_is_empty(group_.get()));
@@ -123,6 +128,33 @@ void AvahiMdnsClient::PublishService(const std::string& service_type,
 void AvahiMdnsClient::StopPublishing(const std::string& service_type) {
   CHECK(group_);
   avahi_entry_group_reset(group_.get());
+  prev_service_type_.clear();
+  prev_port_ = 0;
+  txt_records_.clear();
+}
+
+void AvahiMdnsClient::OnAvahiClientStateUpdate(AvahiClient* s,
+                                               AvahiClientState state,
+                                               void* userdata) {
+  // Avahi service has been re-initialized (probably due to host name conflict),
+  // so we need to republish the service if it has been previously published.
+  if (state == AVAHI_CLIENT_S_RUNNING) {
+    AvahiMdnsClient* self = static_cast<AvahiMdnsClient*>(userdata);
+    self->RepublishService();
+  }
+}
+
+void AvahiMdnsClient::RepublishService() {
+  // If we don't have a service to publish, there is nothing else to do here.
+  if (prev_service_type_.empty())
+    return;
+
+  LOG(INFO) << "Republishing mDNS service";
+  std::string service_type = std::move(prev_service_type_);
+  uint16_t port = prev_port_;
+  std::vector<std::string> txt = std::move(txt_records_);
+  StopPublishing(service_type);
+  PublishService(service_type, port, txt);
 }
 
 }  // namespace buffet

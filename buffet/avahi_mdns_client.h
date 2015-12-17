@@ -40,9 +40,15 @@ class AvahiMdnsClient : public MdnsClient {
   void StopPublishing(const std::string& service_type) override;
 
  private:
+  static void OnAvahiClientStateUpdate(AvahiClient* s,
+                                       AvahiClientState state,
+                                       void* userdata);
+  void RepublishService();
+
   uint16_t prev_port_{0};
-  std::string prev_type_;
+  std::string prev_service_type_;
   std::string service_name_;
+  std::vector<std::string> txt_records_;
   std::unique_ptr<AvahiThreadedPoll, decltype(&avahi_threaded_poll_free)>
       thread_pool_{nullptr, &avahi_threaded_poll_free};
   std::unique_ptr< ::AvahiClient, decltype(&avahi_client_free)> client_{
