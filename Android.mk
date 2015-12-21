@@ -70,7 +70,6 @@ LOCAL_CPPFLAGS := $(buffetCommonCppFlags) -Wno-deprecated-declarations
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
 LOCAL_STATIC_LIBRARIES :=
-LOCAL_RTTI_FLAG := -frtti
 LOCAL_CLANG := true
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 
@@ -134,7 +133,6 @@ LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
 LOCAL_STATIC_LIBRARIES := weaved-brillo-api
 LOCAL_WHOLE_STATIC_LIBRARIES := buffet-common
 LOCAL_CLANG := true
-LOCAL_RTTI_FLAG := -frtti
 
 LOCAL_SRC_FILES := \
 	buffet/main.cc
@@ -170,7 +168,6 @@ LOCAL_SHARED_LIBRARIES := \
 	libweaved-internal \
 
 LOCAL_STATIC_LIBRARIES :=
-LOCAL_RTTI_FLAG := -frtti
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
@@ -204,7 +201,6 @@ LOCAL_STATIC_LIBRARIES := \
 	libweave-test \
 	weaved-brillo-api \
 
-LOCAL_RTTI_FLAG := -frtti
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
