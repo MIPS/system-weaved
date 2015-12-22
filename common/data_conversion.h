@@ -12,25 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BUFFET_DBUS_CONVERSION_H_
-#define BUFFET_DBUS_CONVERSION_H_
+#ifndef COMMON_DATA_CONVERSION_H_
+#define COMMON_DATA_CONVERSION_H_
 
 #include <base/values.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 
-namespace buffet {
+namespace weaved {
+namespace details {
 
-// Converts DictionaryValue to D-Bus variant dictionary.
-brillo::VariantDictionary DictionaryToDBusVariantDictionary(
+// Converts DictionaryValue to variant dictionary.
+brillo::VariantDictionary DictionaryValueToVariantDictionary(
     const base::DictionaryValue& object);
 
-// Converts D-Bus variant dictionary to DictionaryValue.
-std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
+// Converts variant dictionary to DictionaryValue.
+std::unique_ptr<base::DictionaryValue> VariantDictionaryToDictionaryValue(
     const brillo::VariantDictionary& object,
     brillo::ErrorPtr* error);
 
-}  // namespace buffet
+}  // namespace details
+}  // namespace weaved
 
-#endif  // BUFFET_DBUS_CONVERSION_H_
+#endif  // COMMON_DATA_CONVERSION_H_

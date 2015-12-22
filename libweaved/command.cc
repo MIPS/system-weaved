@@ -1,42 +1,64 @@
-/*
- * Copyright 2015 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2015 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include "command.h"
+#include "libweaved/command.h"
 
-#include "buffet/dbus-proxies.h"
+#include "android/weave/IWeaveCommand.h"
+#include "common/binder_utils.h"
+#include "common/data_conversion.h"
+
+using weaved::binder_utils::ParseDictionary;
+using weaved::binder_utils::ToString;
+using weaved::binder_utils::ToString16;
+using weaved::binder_utils::StatusToError;
 
 namespace weaved {
 
-Command::Command(com::android::Weave::CommandProxyInterface* proxy)
-    : proxy_{proxy} {}
+Command::Command(const android::sp<android::weave::IWeaveCommand>& proxy)
+    : binder_proxy_{proxy} {}
 
-const std::string& Command::GetID() const {
-  return proxy_->id();
+Command::~Command() {}
+
+std::string Command::GetID() const {
+  std::string id;
+  android::String16 id16;
+  if (binder_proxy_->getId(&id16).isOk())
+    id.assign(ToString(id16));
+  return id;
 }
 
-const std::string& Command::GetName() const {
-  return proxy_->name();
+std::string Command::GetName() const {
+  std::string name;
+  android::String16 name16;
+  if (binder_proxy_->getId(&name16).isOk())
+    name.assign(ToString(name16));
+  return name;
 }
 
-const std::string& Command::GetComponent() const {
-  return proxy_->component();
+std::string Command::GetComponent() const {
+  std::string component;
+  android::String16 component16;
+  if (binder_proxy_->getId(&component16).isOk())
+    component.assign(ToString(component16));
+  return component;
 }
 
 Command::State Command::GetState() const {
-  std::string state = proxy_->state();
+  std::string state;
+  android::String16 state16;
+  if (binder_proxy_->getState(&state16).isOk())
+    state.assign(ToString(state16));
   if (state == "queued")
     return Command::State::kQueued;
   else if (state == "inProgress")
@@ -58,7 +80,10 @@ Command::State Command::GetState() const {
 }
 
 Command::Origin Command::GetOrigin() const {
-  std::string origin = proxy_->origin();
+  std::string origin;
+  android::String16 origin16;
+  if (binder_proxy_->getState(&origin16).isOk())
+    origin.assign(ToString(origin16));
   if (origin == "local")
     return Command::Origin::kLocal;
   else if (origin == "cloud")
@@ -67,28 +92,41 @@ Command::Origin Command::GetOrigin() const {
   return Command::Origin::kLocal;
 }
 
-const brillo::VariantDictionary& Command::GetParameters() const {
-  return proxy_->parameters();
+brillo::VariantDictionary Command::GetParameters() const {
+  brillo::VariantDictionary params;
+  android::String16 params_string16;
+  if (binder_proxy_->getParameters(&params_string16).isOk()) {
+    std::unique_ptr<base::DictionaryValue> dict;
+    if (ParseDictionary(params_string16, &dict).isOk())
+      params = details::DictionaryValueToVariantDictionary(*dict);
+  }
+  return params;
 }
 
 bool Command::SetProgress(const brillo::VariantDictionary& progress,
                           brillo::ErrorPtr* error) {
-  return proxy_->SetProgress(progress, error);
+  auto dict = details::VariantDictionaryToDictionaryValue(progress, error);
+  return dict && StatusToError(binder_proxy_->setProgress(ToString16(*dict)),
+                               error);
 }
 
 bool Command::Complete(const brillo::VariantDictionary& results,
                        brillo::ErrorPtr* error) {
-  return proxy_->Complete(results, error);
+  auto dict = details::VariantDictionaryToDictionaryValue(results, error);
+  return dict && StatusToError(binder_proxy_->complete(ToString16(*dict)),
+                               error);
 }
 
 bool Command::Abort(const std::string& error_code,
                     const std::string& error_message,
                     brillo::ErrorPtr* error) {
-  return proxy_->Abort(error_code, error_message, error);
+  return StatusToError(binder_proxy_->abort(ToString16(error_code),
+                                            ToString16(error_message)),
+                       error);
 }
 
 bool Command::Cancel(brillo::ErrorPtr* error) {
-  return proxy_->Cancel(error);
+  return StatusToError(binder_proxy_->cancel(), error);
 }
 
 }  // namespace weave

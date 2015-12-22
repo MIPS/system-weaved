@@ -24,42 +24,26 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/values.h>
-#include <brillo/dbus/data_serialization.h>
-#include <brillo/dbus/dbus_object.h>
-#include <brillo/dbus/exported_property_set.h>
+#include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/errors/error.h>
 #include <weave/device.h>
 
+#include "android/weave/BnWeaveServiceManager.h"
+#include "buffet/binder_weave_service.h"
 #include "buffet/buffet_config.h"
-#include "buffet/dbus_bindings/com.android.Weave.Manager.h"
-
-namespace brillo {
-namespace dbus_utils {
-class ExportedObjectManager;
-}  // namespace dbus_utils
-}  // namespace chromeos
 
 namespace buffet {
 
 class BluetoothClient;
-class DBusCommandDispacher;
 class HttpTransportClient;
 class MdnsClient;
 class ShillClient;
 class WebServClient;
 
-template<typename... Types>
-using DBusMethodResponsePtr =
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>;
-
-template<typename... Types>
-using DBusMethodResponse =
-    brillo::dbus_utils::DBusMethodResponse<Types...>;
-
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
 // device state.
-class Manager final : public com::android::Weave::ManagerInterface {
+class Manager final : public android::weave::BnWeaveServiceManager {
  public:
   struct Options {
     bool xmpp_enabled = true;
@@ -70,35 +54,39 @@ class Manager final : public com::android::Weave::ManagerInterface {
     BuffetConfig::Options config_options;
   };
 
-  explicit Manager(
-      const Options& options,
-      const base::WeakPtr<brillo::dbus_utils::ExportedObjectManager>&
-          object_manager);
-  ~Manager();
+  Manager(const Options& options, const scoped_refptr<dbus::Bus>& bus);
+  ~Manager() override;
 
   void Start(brillo::dbus_utils::AsyncEventSequencer* sequencer);
-
   void Stop();
 
  private:
   void RestartWeave(brillo::dbus_utils::AsyncEventSequencer* sequencer);
   void CreateDevice();
 
-  // DBus methods:
-  void RegisterDevice(DBusMethodResponsePtr<std::string> response,
-                      const std::string& ticket_id) override;
-  void AddComponent(DBusMethodResponsePtr<> response,
-                    const std::string& name,
-                    const std::vector<std::string>& traits) override;
-  void UpdateState(DBusMethodResponsePtr<> response,
-                   const std::string& component,
-                   const brillo::VariantDictionary& property_set) override;
-  void AddCommand(DBusMethodResponsePtr<std::string> response,
-                  const std::string& json_command) override;
-  std::string TestMethod(const std::string& message) override;
-
-  void StartPrivet(const Options& options,
-                   brillo::dbus_utils::AsyncEventSequencer* sequencer);
+  // Binder methods for IWeaveServiceManager:
+  using WeaveServiceManagerNotificationListener =
+      android::sp<android::weave::IWeaveServiceManagerNotificationListener>;
+  android::binder::Status connect(
+      const android::sp<android::weave::IWeaveClient>& client) override;
+  android::binder::Status registerNotificationListener(
+      const WeaveServiceManagerNotificationListener& listener) override;
+  android::binder::Status getDeviceId(android::String16* id) override;
+  android::binder::Status getCloudId(android::String16* id) override;
+  android::binder::Status getDeviceName(android::String16* name) override;
+  android::binder::Status getDeviceDescription(
+      android::String16* description) override;
+  android::binder::Status getDeviceLocation(
+      android::String16* location) override;
+  android::binder::Status getOemName(android::String16* name) override;
+  android::binder::Status getModelName(android::String16* name) override;
+  android::binder::Status getModelId(android::String16* id) override;
+  android::binder::Status getPairingSessionId(android::String16* id) override;
+  android::binder::Status getPairingMode(android::String16* mode) override;
+  android::binder::Status getPairingCode(android::String16* code) override;
+  android::binder::Status getState(android::String16* state) override;
+  android::binder::Status getTraits(android::String16* traits) override;
+  android::binder::Status getComponents(android::String16* components) override;
 
   void OnTraitDefsChanged();
   void OnComponentTreeChanged();
@@ -109,13 +97,15 @@ class Manager final : public com::android::Weave::ManagerInterface {
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
-  void RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
-                          weave::ErrorPtr error);
+  void CreateServicesForClients();
+  void OnClientDisconnected(
+      const android::sp<android::weave::IWeaveClient>& client);
+  void OnNotificationListenerDestroyed(
+      const WeaveServiceManagerNotificationListener& notification_listener);
+  void NotifyServiceManagerChange(const std::vector<int>& notification_ids);
 
   Options options_;
-
-  com::android::Weave::ManagerAdaptor dbus_adaptor_{this};
-  brillo::dbus_utils::DBusObject dbus_object_;
+  scoped_refptr<dbus::Bus> bus_;
 
   class TaskRunner;
   std::unique_ptr<TaskRunner> task_runner_;
@@ -126,8 +116,25 @@ class Manager final : public com::android::Weave::ManagerInterface {
   std::unique_ptr<MdnsClient> mdns_client_;
   std::unique_ptr<WebServClient> web_serv_client_;
   std::unique_ptr<weave::Device> device_;
-  std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
-  brillo::dbus_utils::AsyncEventSequencer::Handler dbus_registration_handler_;
+
+  std::vector<android::sp<android::weave::IWeaveClient>> pending_clients_;
+  std::map<android::sp<android::weave::IWeaveClient>,
+           android::sp<BinderWeaveService>> services_;
+  std::set<WeaveServiceManagerNotificationListener> notification_listeners_;
+
+  // State properties.
+  std::string cloud_id_;
+  std::string device_id_;
+  std::string device_name_;
+  std::string device_description_;
+  std::string device_location_;
+  std::string oem_name_;
+  std::string model_name_;
+  std::string model_id_;
+  std::string pairing_session_id_;
+  std::string pairing_mode_;
+  std::string pairing_code_;
+  std::string state_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

@@ -30,7 +30,6 @@ buffetCommonCppFlags := \
 
 buffetCommonCIncludes := \
 	$(LOCAL_PATH)/.. \
-	$(LOCAL_PATH)/dbus-proxies \
 	external/cros/system_api \
 	external/gtest/include \
 
@@ -38,7 +37,10 @@ buffetSharedLibraries := \
 	libapmanager-client \
 	libavahi-common \
 	libavahi-client \
+	libbinder \
+	libbinderwrapper \
 	libbrillo \
+	libbrillo-binder \
 	libbrillo-dbus \
 	libbrillo-http \
 	libbrillo-stream \
@@ -47,6 +49,7 @@ buffetSharedLibraries := \
 	libcutils \
 	libdbus \
 	libshill-client \
+	libutils \
 	libweave \
 	libwebserv \
 
@@ -58,10 +61,38 @@ buffetSharedLibraries += \
 
 endif
 
-# buffet-common
+# weave-common
+# Code shared between weaved daemon and libweaved client library
 # ========================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE := buffet-common
+LOCAL_MODULE := weave-common
+LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
+LOCAL_CFLAGS := $(buffetCommonCFlags)
+LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
+LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
+LOCAL_AIDL_INCLUDES := $(LOCAL_PATH)/brillo
+LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
+LOCAL_CLANG := true
+
+LOCAL_SRC_FILES := \
+	brillo/android/weave/IWeaveClient.aidl \
+	brillo/android/weave/IWeaveCommand.aidl \
+	brillo/android/weave/IWeaveService.aidl \
+	brillo/android/weave/IWeaveServiceManager.aidl \
+	brillo/android/weave/IWeaveServiceManagerNotificationListener.aidl \
+	common/binder_constants.cc \
+	common/binder_utils.cc \
+	common/data_conversion.cc \
+
+include $(BUILD_STATIC_LIBRARY)
+
+# weave-daemon-common
+# Code shared between weaved daemon and unit test runner.
+# This is essentially the implementation of weaved in a static library format.
+# ========================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE := weave-daemon-common
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
 # TODO(avakulenko): Remove -Wno-deprecated-declarations when legacy libweave
@@ -69,17 +100,17 @@ LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags) -Wno-deprecated-declarations
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
-LOCAL_STATIC_LIBRARIES :=
+LOCAL_STATIC_LIBRARIES := weave-common
 LOCAL_CLANG := true
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 
 LOCAL_SRC_FILES := \
+	brillo/weaved_system_properties.cc \
 	buffet/ap_manager_client.cc \
 	buffet/avahi_mdns_client.cc \
+	buffet/binder_command_proxy.cc \
+	buffet/binder_weave_service.cc \
 	buffet/buffet_config.cc \
-	buffet/dbus_command_dispatcher.cc \
-	buffet/dbus_command_proxy.cc \
-	buffet/dbus_conversion.cc \
 	buffet/dbus_constants.cc \
 	buffet/flouride_socket_bluetooth_client.cc \
 	buffet/http_transport_client.cc \
@@ -87,9 +118,6 @@ LOCAL_SRC_FILES := \
 	buffet/shill_client.cc \
 	buffet/socket_stream.cc \
 	buffet/webserv_client.cc \
-	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
-	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
 
 ifdef BRILLO
 LOCAL_SRC_FILES += buffet/keystore_encryptor.cc
@@ -99,28 +127,13 @@ endif
 
 include $(BUILD_STATIC_LIBRARY)
 
-# weaved-brillo-api
-# ========================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := weaved-brillo-api
-LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
-LOCAL_CFLAGS := $(buffetCommonCFlags)
-LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
-LOCAL_CLANG := true
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
-
-LOCAL_SRC_FILES := \
-	brillo/weaved_system_properties.cc \
-
-include $(BUILD_STATIC_LIBRARY)
-
 # weaved
+# The main binary of the weave daemon.
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved
 LOCAL_REQUIRED_MODULES := \
 	avahi-daemon \
-	com.android.Weave.conf \
 	libweaved \
 	webservd \
 
@@ -130,8 +143,9 @@ LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
 LOCAL_C_INCLUDES := $(buffetCommonCIncludes)
 LOCAL_INIT_RC := weaved.rc
 LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
-LOCAL_STATIC_LIBRARIES := weaved-brillo-api
-LOCAL_WHOLE_STATIC_LIBRARIES := buffet-common
+LOCAL_STATIC_LIBRARIES := weave-common \
+
+LOCAL_WHOLE_STATIC_LIBRARIES := weave-daemon-common
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
@@ -139,22 +153,9 @@ LOCAL_SRC_FILES := \
 
 include $(BUILD_EXECUTABLE)
 
-# libweaved-internal
-# ========================================================
-# You do not want to depend on this.  Depend on libweaved instead.
-# libweaved abstracts and helps you consume this interface.
-include $(CLEAR_VARS)
-LOCAL_MODULE := libweaved-internal
-LOCAL_DBUS_PROXY_PREFIX := buffet
-
-LOCAL_SRC_FILES := \
-	buffet/dbus_bindings/dbus-service-config.json \
-	buffet/dbus_bindings/com.android.Weave.Command.dbus-xml \
-	buffet/dbus_bindings/com.android.Weave.Manager.dbus-xml \
-
-include $(BUILD_SHARED_LIBRARY)
-
 # libweaved
+# The client library for the weave daemon. You should link to libweaved,
+# if you need to communicate with weaved.
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := libweaved
@@ -163,16 +164,14 @@ LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
 LOCAL_C_INCLUDES := external/gtest/include
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
-LOCAL_SHARED_LIBRARIES := \
-	$(buffetSharedLibraries) \
-	libweaved-internal \
+LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
+LOCAL_STATIC_LIBRARIES := weave-common
 
-LOCAL_STATIC_LIBRARIES :=
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
 	libweaved/command.cc \
-	libweaved/device.cc \
+	libweaved/service.cc \
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -192,30 +191,20 @@ LOCAL_SHARED_LIBRARIES := \
 	$(buffetSharedLibraries) \
 
 LOCAL_STATIC_LIBRARIES := \
-	buffet-common \
 	libbrillo-test-helpers \
-	libchrome_dbus_test_helpers \
 	libchrome_test_helpers \
 	libgtest \
 	libgmock \
 	libweave-test \
-	weaved-brillo-api \
+	weave-daemon-common \
+	weave-common \
 
 LOCAL_CLANG := true
 
 LOCAL_SRC_FILES := \
+	buffet/binder_command_proxy_unittest.cc \
 	buffet/buffet_config_unittest.cc \
 	buffet/buffet_testrunner.cc \
-	buffet/dbus_command_proxy_unittest.cc \
-	buffet/dbus_conversion_unittest.cc \
+	common/data_conversion_unittest.cc \
 
 include $(BUILD_NATIVE_TEST)
-
-# DBus config files for /etc/dbus-1
-# ========================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := com.android.Weave.conf
-LOCAL_MODULE_CLASS := ETC
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)/dbus-1
-LOCAL_SRC_FILES := buffet/etc/dbus-1/com.android.Weave.conf
-include $(BUILD_PREBUILT)

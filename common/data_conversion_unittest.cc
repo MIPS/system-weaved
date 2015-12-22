@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "buffet/dbus_conversion.h"
+#include "common/data_conversion.h"
 
 #include <limits>
 #include <memory>
@@ -26,7 +26,7 @@
 #include <gtest/gtest.h>
 #include <weave/test/unittest_utils.h>
 
-namespace buffet {
+namespace weaved {
 
 namespace {
 
@@ -35,14 +35,14 @@ using brillo::VariantDictionary;
 using weave::test::CreateDictionaryValue;
 using weave::test::IsEqualValue;
 
-brillo::VariantDictionary ToDBus(const base::DictionaryValue& object) {
-  return DictionaryToDBusVariantDictionary(object);
+brillo::VariantDictionary ToVariant(const base::DictionaryValue& object) {
+  return details::DictionaryValueToVariantDictionary(object);
 }
 
-std::unique_ptr<base::DictionaryValue> FromDBus(
+std::unique_ptr<base::DictionaryValue> FromVariant(
     const brillo::VariantDictionary& object) {
   brillo::ErrorPtr error;
-  auto result = DictionaryFromDBusVariantDictionary(object, &error);
+  auto result = details::VariantDictionaryToDictionaryValue(object, &error);
   EXPECT_TRUE(result || error);
   return result;
 }
@@ -133,64 +133,67 @@ std::unique_ptr<base::Value> CreateRandomValue(int children) {
 
 TEST(DBusConversionTest, DictionaryToDBusVariantDictionary) {
   EXPECT_EQ((VariantDictionary{{"bool", true}}),
-            ToDBus(*CreateDictionaryValue("{'bool': true}")));
+            ToVariant(*CreateDictionaryValue("{'bool': true}")));
   EXPECT_EQ((VariantDictionary{{"int", 5}}),
-            ToDBus(*CreateDictionaryValue("{'int': 5}")));
+            ToVariant(*CreateDictionaryValue("{'int': 5}")));
   EXPECT_EQ((VariantDictionary{{"double", 6.7}}),
-            ToDBus(*CreateDictionaryValue("{'double': 6.7}")));
+            ToVariant(*CreateDictionaryValue("{'double': 6.7}")));
   EXPECT_EQ((VariantDictionary{{"string", std::string{"abc"}}}),
-            ToDBus(*CreateDictionaryValue("{'string': 'abc'}")));
+            ToVariant(*CreateDictionaryValue("{'string': 'abc'}")));
   EXPECT_EQ((VariantDictionary{{"object", VariantDictionary{{"bool", true}}}}),
-            ToDBus(*CreateDictionaryValue("{'object': {'bool': true}}")));
+            ToVariant(*CreateDictionaryValue("{'object': {'bool': true}}")));
   EXPECT_EQ((VariantDictionary{{"emptyList", std::vector<Any>{}}}),
-            ToDBus(*CreateDictionaryValue("{'emptyList': []}")));
+            ToVariant(*CreateDictionaryValue("{'emptyList': []}")));
   EXPECT_EQ((VariantDictionary{{"intList", std::vector<int>{5}}}),
-            ToDBus(*CreateDictionaryValue("{'intList': [5]}")));
+            ToVariant(*CreateDictionaryValue("{'intList': [5]}")));
   EXPECT_EQ((VariantDictionary{
                 {"intListList", std::vector<Any>{std::vector<int>{5},
                                                  std::vector<int>{6, 7}}}}),
-            ToDBus(*CreateDictionaryValue("{'intListList': [[5], [6, 7]]}")));
+            ToVariant(*CreateDictionaryValue(
+                "{'intListList': [[5], [6, 7]]}")));
   EXPECT_EQ((VariantDictionary{{"objList",
                                 std::vector<VariantDictionary>{
                                     {{"string", std::string{"abc"}}}}}}),
-            ToDBus(*CreateDictionaryValue("{'objList': [{'string': 'abc'}]}")));
+            ToVariant(*CreateDictionaryValue(
+                "{'objList': [{'string': 'abc'}]}")));
 }
 
-TEST(DBusConversionTest, DictionaryFromDBusVariantDictionary) {
-  EXPECT_JSON_EQ("{'bool': true}", *FromDBus({{"bool", true}}));
-  EXPECT_JSON_EQ("{'int': 5}", *FromDBus({{"int", 5}}));
-  EXPECT_JSON_EQ("{'double': 6.7}", *FromDBus({{"double", 6.7}}));
+TEST(DBusConversionTest, VariantDictionaryToDictionaryValue) {
+  EXPECT_JSON_EQ("{'bool': true}", *FromVariant({{"bool", true}}));
+  EXPECT_JSON_EQ("{'int': 5}", *FromVariant({{"int", 5}}));
+  EXPECT_JSON_EQ("{'double': 6.7}", *FromVariant({{"double", 6.7}}));
   EXPECT_JSON_EQ("{'string': 'abc'}",
-                 *FromDBus({{"string", std::string{"abc"}}}));
+                 *FromVariant({{"string", std::string{"abc"}}}));
   EXPECT_JSON_EQ("{'object': {'bool': true}}",
-                 *FromDBus({{"object", VariantDictionary{{"bool", true}}}}));
+                 *FromVariant({{"object", VariantDictionary{{"bool", true}}}}));
   EXPECT_JSON_EQ("{'emptyList': []}",
-                 *FromDBus({{"emptyList", std::vector<bool>{}}}));
+                 *FromVariant({{"emptyList", std::vector<bool>{}}}));
   EXPECT_JSON_EQ("{'intList': [5]}",
-                 *FromDBus({{"intList", std::vector<int>{5}}}));
+                 *FromVariant({{"intList", std::vector<int>{5}}}));
   EXPECT_JSON_EQ(
       "{'intListList': [[5], [6, 7]]}",
-      *FromDBus({{"intListList", std::vector<Any>{std::vector<int>{5},
-                                                  std::vector<int>{6, 7}}}}));
+      *FromVariant({{"intListList",
+                   std::vector<Any>{std::vector<int>{5},
+                                    std::vector<int>{6, 7}}}}));
   EXPECT_JSON_EQ(
       "{'objList': [{'string': 'abc'}]}",
-      *FromDBus({{"objList", std::vector<VariantDictionary>{
-                                 {{"string", std::string{"abc"}}}}}}));
-  EXPECT_JSON_EQ("{'int': 5}", *FromDBus({{"int", Any{Any{5}}}}));
+      *FromVariant({{"objList", std::vector<VariantDictionary>{
+                                    {{"string", std::string{"abc"}}}}}}));
+  EXPECT_JSON_EQ("{'int': 5}", *FromVariant({{"int", Any{Any{5}}}}));
 }
 
-TEST(DBusConversionTest, DictionaryFromDBusVariantDictionary_Errors) {
-  EXPECT_FALSE(FromDBus({{"cString", "abc"}}));
-  EXPECT_FALSE(FromDBus({{"float", 1.0f}}));
-  EXPECT_FALSE(FromDBus({{"listList", std::vector<std::vector<int>>{}}}));
-  EXPECT_FALSE(FromDBus({{"any", Any{}}}));
-  EXPECT_FALSE(FromDBus({{"null", nullptr}}));
+TEST(DBusConversionTest, VariantDictionaryToDictionaryValueErrors) {
+  EXPECT_FALSE(FromVariant({{"cString", "abc"}}));
+  EXPECT_FALSE(FromVariant({{"float", 1.0f}}));
+  EXPECT_FALSE(FromVariant({{"listList", std::vector<std::vector<int>>{}}}));
+  EXPECT_FALSE(FromVariant({{"any", Any{}}}));
+  EXPECT_FALSE(FromVariant({{"null", nullptr}}));
 }
 
 TEST(DBusConversionTest, DBusRandomDictionaryConversion) {
   auto dict = CreateRandomDictionary(10000);
-  auto varian_dict = ToDBus(*dict);
-  auto dict_restored = FromDBus(varian_dict);
+  auto varian_dict = ToVariant(*dict);
+  auto dict_restored = FromVariant(varian_dict);
   EXPECT_PRED2(IsEqualValue, *dict, *dict_restored);
 }
 
