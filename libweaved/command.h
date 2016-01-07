@@ -18,6 +18,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <binder/Status.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <libweaved/export.h>
@@ -123,9 +124,41 @@ class LIBWEAVED_EXPORT Command final {
              const std::string& error_message,
              brillo::ErrorPtr* error);
 
+  // Aborts command execution.
+  // Sets command into terminal "aborted" state and uses the error information
+  // from the |command_error| object. The error codes extracted from
+  // |command_error| are automatically prepended with an underscore ("_").
+  bool AbortWithCustomError(const brillo::Error* command_error,
+                            brillo::ErrorPtr* error);
+  // AbortWithCustomError overload for specifying the error information as
+  // binder::Status.
+  bool AbortWithCustomError(android::binder::Status status,
+                            brillo::ErrorPtr* error);
+
   // Cancels command execution.
   // Sets command into terminal "canceled" state.
   bool Cancel(brillo::ErrorPtr* error);
+
+  // Sets command into paused state.
+  // This is not terminal state. Command can be resumed with |SetProgress| call.
+  bool Pause(brillo::ErrorPtr* error);
+
+  // Sets command into error state and assign error.
+  // This is not terminal state. Command can be resumed with |SetProgress| call.
+  bool SetError(const std::string& error_code,
+                const std::string& error_message,
+                brillo::ErrorPtr* error);
+
+  // Sets command into error state and assign error.
+  // This is not terminal state. Command can be resumed with |SetProgress| call.
+  // Uses the error information from the |command_error| object.
+  // The error codes extracted from |command_error| are automatically prepended
+  // with an underscore ("_").
+  bool SetCustomError(const brillo::Error* command_error,
+                      brillo::ErrorPtr* error);
+  // SetError overload for specifying the error information as binder::Status.
+  bool SetCustomError(android::binder::Status status,
+                      brillo::ErrorPtr* error);
 
  protected:
   explicit Command(const android::sp<android::weave::IWeaveCommand>& proxy);
