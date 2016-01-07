@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
+#include <base/strings/stringprintf.h>
 #include <binderwrapper/binder_wrapper.h>
 #include <brillo/message_loops/message_loop.h>
 
@@ -163,13 +164,15 @@ class ServiceImpl : public std::enable_shared_from_this<ServiceImpl>,
                     const std::vector<std::string>& traits,
                     brillo::ErrorPtr* error) override;
   void AddCommandHandler(const std::string& component,
+                         const std::string& trait_name,
                          const std::string& command_name,
                          const CommandHandlerCallback& callback) override;
   bool SetStateProperties(const std::string& component,
                           const brillo::VariantDictionary& dict,
                           brillo::ErrorPtr* error) override;
   bool SetStateProperty(const std::string& component,
-                        const std::string& name,
+                        const std::string& trait_name,
+                        const std::string& property_name,
                         const brillo::Any& value,
                         brillo::ErrorPtr* error) override;
 
@@ -276,20 +279,24 @@ bool ServiceImpl::AddComponent(const std::string& component,
 }
 
 void ServiceImpl::AddCommandHandler(const std::string& component,
+                                    const std::string& trait_name,
                                     const std::string& command_name,
                                     const CommandHandlerCallback& callback) {
   CHECK(!component.empty() && !command_name.empty());
   CHECK(weave_service_.get());
 
+  std::string full_command_name =
+      base::StringPrintf("%s.%s", trait_name.c_str(), command_name.c_str());
+
   CommandHandlerEntry entry;
   entry.component = component;
-  entry.command_name = command_name;
+  entry.command_name = full_command_name;
   entry.callback = callback;
   command_handlers_.push_back(std::move(entry));
 
   auto status = weave_service_->registerCommandHandler(
       android::String16{component.c_str()},
-      android::String16{command_name.c_str()});
+      android::String16{full_command_name.c_str()});
   CHECK(status.isOk());
 }
 
@@ -307,9 +314,12 @@ bool ServiceImpl::SetStateProperties(const std::string& component,
 }
 
 bool ServiceImpl::SetStateProperty(const std::string& component,
-                                   const std::string& name,
+                                   const std::string& trait_name,
+                                   const std::string& property_name,
                                    const brillo::Any& value,
                                    brillo::ErrorPtr* error) {
+  std::string name =
+      base::StringPrintf("%s.%s", trait_name.c_str(), property_name.c_str());
   return SetStateProperties(component, brillo::VariantDictionary{{name, value}},
                             error);
 }

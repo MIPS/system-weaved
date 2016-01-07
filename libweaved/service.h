@@ -54,10 +54,11 @@ class LIBWEAVED_EXPORT Service {
                             brillo::ErrorPtr* error) = 0;
 
   // Sets handler for new commands added to the queue for a given |component|.
-  // |command_name| is the full name of the command to handle, including the
-  // name of the trait, e.g. "base.reboot".
+  // |command_name| is the name of the command to handle (e.g. "reboot").
+  // |trait_name| is the name of a trait the command belongs to (e.g. "base").
   // Each command can have no more than one handler.
   virtual void AddCommandHandler(const std::string& component,
+                                 const std::string& trait_name,
                                  const std::string& command_name,
                                  const CommandHandlerCallback& callback) = 0;
 
@@ -68,9 +69,12 @@ class LIBWEAVED_EXPORT Service {
                                   brillo::ErrorPtr* error) = 0;
 
   // Sets value of the single property.
-  // |name| is full property name, including trait name. e.g. "base.network".
+  // |component| is a path to the component to set the property value to.
+  // |trait_name| is the name of the trait this property is part of.
+  // |property_name| is the property name.
   virtual bool SetStateProperty(const std::string& component,
-                                const std::string& name,
+                                const std::string& trait_name,
+                                const std::string& property_name,
                                 const brillo::Any& value,
                                 brillo::ErrorPtr* error) = 0;
 
