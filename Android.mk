@@ -48,6 +48,7 @@ buffetSharedLibraries := \
 	libchrome-dbus \
 	libcutils \
 	libdbus \
+	libnativepower \
 	libshill-client \
 	libutils \
 	libweave \

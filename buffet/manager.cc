@@ -60,6 +60,8 @@ namespace {
 
 const char kErrorDomain[] = "buffet";
 const char kFileReadError[] = "file_read_error";
+const char kBaseComponent[] = "base";
+const char kRebootCommand[] = "base.reboot";
 
 bool LoadFile(const base::FilePath& file_path,
               std::string* data,
@@ -188,6 +190,7 @@ Manager::~Manager() {
 }
 
 void Manager::Start(AsyncEventSequencer* sequencer) {
+  power_manager_client_.Init();
   RestartWeave(sequencer);
 }
 
@@ -259,6 +262,10 @@ void Manager::CreateDevice() {
   device_->AddPairingChangedCallbacks(
       base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
+
+  device_->AddCommandHandler(kBaseComponent, kRebootCommand,
+                             base::Bind(&Manager::OnRebootDevice,
+                                        weak_ptr_factory_.GetWeakPtr()));
 
   CreateServicesForClients();
 }
@@ -337,6 +344,21 @@ void Manager::OnPairingEnd(const std::string& session_id) {
   UpdateValue(this, &Manager::pairing_code_, "",
               NotificationListener::PAIRING_CODE, &ids);
   NotifyServiceManagerChange(ids);
+}
+
+void Manager::OnRebootDevice(const std::weak_ptr<weave::Command>& cmd) {
+  auto command = cmd.lock();
+  if (!command || !command->Complete({}, nullptr))
+    return;
+
+  task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&Manager::RebootDeviceNow, weak_ptr_factory_.GetWeakPtr()),
+      base::TimeDelta::FromSeconds(2));
+}
+
+void Manager::RebootDeviceNow() {
+  power_manager_client_.Reboot(android::RebootReason::DEFAULT);
 }
 
 android::binder::Status Manager::connect(

@@ -26,6 +26,7 @@
 #include <base/values.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/errors/error.h>
+#include <nativepower/power_manager_client.h>
 #include <weave/device.h>
 
 #include "android/weave/BnWeaveServiceManager.h"
@@ -103,6 +104,8 @@ class Manager final : public android::weave::BnWeaveServiceManager {
   void OnNotificationListenerDestroyed(
       const WeaveServiceManagerNotificationListener& notification_listener);
   void NotifyServiceManagerChange(const std::vector<int>& notification_ids);
+  void OnRebootDevice(const std::weak_ptr<weave::Command>& cmd);
+  void RebootDeviceNow();
 
   Options options_;
   scoped_refptr<dbus::Bus> bus_;
@@ -121,6 +124,7 @@ class Manager final : public android::weave::BnWeaveServiceManager {
   std::map<android::sp<android::weave::IWeaveClient>,
            android::sp<BinderWeaveService>> services_;
   std::set<WeaveServiceManagerNotificationListener> notification_listeners_;
+  android::PowerManagerClient power_manager_client_;
 
   // State properties.
   std::string cloud_id_;
