@@ -1,7 +1,0 @@
-{
-  "service_name": "com.android.Weave",
-  "object_manager": {
-    "name": "com.android.Weave.ObjectManager",
-    "object_path": "/com/android/Weave"
-  }
-}

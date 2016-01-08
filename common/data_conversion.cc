@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "buffet/dbus_conversion.h"
+#include "common/data_conversion.h"
 
-#include <set>
 #include <string>
 #include <vector>
 
 #include <brillo/type_name_undecorate.h>
 
-namespace buffet {
+namespace weaved {
 
 namespace {
 
@@ -54,7 +53,7 @@ brillo::Any DictListToAny(const base::ListValue& list) {
   for (const base::Value* v : list) {
     const base::DictionaryValue* dict = nullptr;
     CHECK(v->GetAsDictionary(&dict));
-    result.push_back(DictionaryToDBusVariantDictionary(*dict));
+    result.push_back(details::DictionaryValueToVariantDictionary(*dict));
   }
   return result;
 }
@@ -87,7 +86,7 @@ brillo::Any ValueToAny(const base::Value& json) {
     case base::Value::TYPE_DICTIONARY: {
       const base::DictionaryValue* dict = nullptr;
       CHECK(json.GetAsDictionary(&dict));
-      prop_value = DictionaryToDBusVariantDictionary(*dict);
+      prop_value = details::DictionaryValueToVariantDictionary(*dict);
       break;
     }
     case base::Value::TYPE_LIST: {
@@ -144,10 +143,13 @@ std::unique_ptr<base::Value> CreateValue(const T& value,
   return std::unique_ptr<base::Value>{new base::FundamentalValue{value}};
 }
 
-template <>
-std::unique_ptr<base::Value> CreateValue<std::string>(
-    const std::string& value,
-    brillo::ErrorPtr* error) {
+std::unique_ptr<base::Value> CreateValue(const std::string& value,
+                                         brillo::ErrorPtr* error) {
+  return std::unique_ptr<base::Value>{new base::StringValue{value}};
+}
+
+std::unique_ptr<base::Value> CreateValue(const char* value,
+                                         brillo::ErrorPtr* error) {
   return std::unique_ptr<base::Value>{new base::StringValue{value}};
 }
 
@@ -155,7 +157,7 @@ template <>
 std::unique_ptr<base::Value> CreateValue<brillo::VariantDictionary>(
     const brillo::VariantDictionary& value,
     brillo::ErrorPtr* error) {
-  return DictionaryFromDBusVariantDictionary(value, error);
+  return details::VariantDictionaryToDictionaryValue(value, error);
 }
 
 template <typename T>
@@ -209,6 +211,9 @@ std::unique_ptr<base::Value> CreateValue<brillo::Any>(
   if (!TryCreateValue<std::string>(any, &result, error) || result)
     return result;
 
+  if (any.IsTypeCompatible<const char*>())
+    return CreateValue(any.Get<const char*>(), error);
+
   if (!TryCreateValue<brillo::VariantDictionary>(any, &result, error) ||
       result) {
     return result;
@@ -227,8 +232,9 @@ std::unique_ptr<base::Value> CreateValue<brillo::Any>(
 
 }  // namespace
 
-// TODO(vitalybuka): Use in buffet_client.
-brillo::VariantDictionary DictionaryToDBusVariantDictionary(
+namespace details {
+
+brillo::VariantDictionary DictionaryValueToVariantDictionary(
     const base::DictionaryValue& object) {
   brillo::VariantDictionary result;
 
@@ -238,7 +244,7 @@ brillo::VariantDictionary DictionaryToDBusVariantDictionary(
   return result;
 }
 
-std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
+std::unique_ptr<base::DictionaryValue> VariantDictionaryToDictionaryValue(
     const brillo::VariantDictionary& object,
     brillo::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> result{new base::DictionaryValue};
@@ -253,4 +259,5 @@ std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
   return result;
 }
 
-}  // namespace buffet
+}  // namespace details
+}  // namespace weaved

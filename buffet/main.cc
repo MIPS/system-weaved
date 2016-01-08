@@ -15,8 +15,11 @@
 #include <string>
 
 #include <signal.h>
+#include <sysexits.h>
 
 #include <base/files/file_path.h>
+#include <binderwrapper/binder_wrapper.h>
+#include <brillo/binder_watcher.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
@@ -27,6 +30,7 @@
 #include "buffet/buffet_config.h"
 #include "buffet/dbus_constants.h"
 #include "buffet/manager.h"
+#include "common/binder_constants.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::DBusServiceDaemon;
@@ -41,8 +45,19 @@ class Daemon final : public DBusServiceDaemon {
       : DBusServiceDaemon(kServiceName, kRootServicePath), options_{options} {}
 
  protected:
+  int OnInit() override {
+    android::BinderWrapper::Create();
+    if (!binder_watcher_.Init())
+      return EX_OSERR;
+
+    return brillo::DBusServiceDaemon::OnInit();
+  }
+
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    manager_.reset(new Manager(options_, object_manager_->AsWeakPtr()));
+    manager_ = new Manager{options_, bus_};
+    android::BinderWrapper::Get()->RegisterService(
+        weaved::binder::kWeaveServiceName,
+        android::IInterface::asBinder(manager_));
     manager_->Start(sequencer);
   }
 
@@ -50,8 +65,9 @@ class Daemon final : public DBusServiceDaemon {
 
  private:
   Manager::Options options_;
+  brillo::BinderWatcher binder_watcher_;
+  android::sp<buffet::Manager> manager_;
 
-  std::unique_ptr<buffet::Manager> manager_;
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 

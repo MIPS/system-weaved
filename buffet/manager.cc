@@ -26,10 +26,9 @@
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <binderwrapper/binder_wrapper.h>
 #include <cutils/properties.h>
 #include <brillo/bind_lambda.h>
-#include <brillo/dbus/async_event_sequencer.h>
-#include <brillo/dbus/exported_object_manager.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
@@ -44,25 +43,20 @@
 #include "brillo/weaved_system_properties.h"
 #include "buffet/bluetooth_client.h"
 #include "buffet/buffet_config.h"
-#include "buffet/dbus_command_dispatcher.h"
-#include "buffet/dbus_conversion.h"
 #include "buffet/http_transport_client.h"
 #include "buffet/mdns_client.h"
 #include "buffet/shill_client.h"
 #include "buffet/weave_error_conversion.h"
 #include "buffet/webserv_client.h"
+#include "common/binder_utils.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::DBusMethodResponse;
-using brillo::dbus_utils::ExportedObjectManager;
+using NotificationListener =
+    android::weave::IWeaveServiceManagerNotificationListener;
 
 namespace buffet {
 
 namespace {
-
-const char kPairingSessionIdKey[] = "sessionId";
-const char kPairingModeKey[] = "mode";
-const char kPairingCodeKey[] = "code";
 
 const char kErrorDomain[] = "buffet";
 const char kFileReadError[] = "file_read_error";
@@ -152,6 +146,20 @@ void LoadStateDefaults(const BuffetConfig::Options& options,
   }
 }
 
+// Updates the manager's state property if the new value is different from
+// the current value. In this case also adds the appropriate notification ID
+// to the array to record the state change for clients.
+void UpdateValue(Manager* manager,
+                 std::string Manager::* prop,
+                 const std::string& new_value,
+                 int notification,
+                 std::vector<int>* notification_ids) {
+  if (manager->*prop != new_value) {
+    manager->*prop = new_value;
+    notification_ids->push_back(notification);
+  }
+}
+
 }  // anonymous namespace
 
 class Manager::TaskRunner : public weave::provider::TaskRunner {
@@ -164,21 +172,23 @@ class Manager::TaskRunner : public weave::provider::TaskRunner {
 };
 
 Manager::Manager(const Options& options,
-                 const base::WeakPtr<ExportedObjectManager>& object_manager)
-    : options_{options},
-      dbus_object_(object_manager.get(),
-                   object_manager->GetBus(),
-                   com::android::Weave::ManagerAdaptor::GetObjectPath()) {}
+                 const scoped_refptr<dbus::Bus>& bus)
+    : options_{options}, bus_{bus} {}
 
 Manager::~Manager() {
+  android::BinderWrapper* binder_wrapper = android::BinderWrapper::Get();
+  for (const auto& listener : notification_listeners_) {
+    binder_wrapper->UnregisterForDeathNotifications(
+        android::IInterface::asBinder(listener));
+  }
+  for (const auto& pair : services_) {
+    binder_wrapper->UnregisterForDeathNotifications(
+        android::IInterface::asBinder(pair.first));
+  }
 }
 
 void Manager::Start(AsyncEventSequencer* sequencer) {
   RestartWeave(sequencer);
-
-  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
-  dbus_registration_handler_ =
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true);
 }
 
 void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
@@ -187,7 +197,7 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   task_runner_.reset(new TaskRunner{});
   config_.reset(new BuffetConfig{options_.config_options});
   http_client_.reset(new HttpTransportClient);
-  shill_client_.reset(new ShillClient{dbus_object_.GetBus(),
+  shill_client_.reset(new ShillClient{bus_,
                                       options_.device_whitelist,
                                       !options_.xmpp_enabled});
   weave::provider::HttpServer* http_server{nullptr};
@@ -195,7 +205,7 @@ void Manager::RestartWeave(AsyncEventSequencer* sequencer) {
   if (!options_.disable_privet) {
     mdns_client_ = MdnsClient::CreateInstance();
     web_serv_client_.reset(new WebServClient{
-        dbus_object_.GetBus(), sequencer,
+        bus_, sequencer,
         base::Bind(&Manager::CreateDevice, weak_ptr_factory_.GetWeakPtr())});
     bluetooth_client_ = BluetoothClient::CreateInstance();
     http_server = web_serv_client_.get();
@@ -233,9 +243,6 @@ void Manager::CreateDevice() {
   device_->AddSettingsChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  command_dispatcher_.reset(
-      new DBusCommandDispacher{dbus_object_.GetObjectManager(), device_.get()});
-
   device_->AddTraitDefsChangedCallback(
       base::Bind(&Manager::OnTraitDefsChanged,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -253,15 +260,10 @@ void Manager::CreateDevice() {
       base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
 
-  auto handler = dbus_registration_handler_;
-  if (handler.is_null())
-    handler = AsyncEventSequencer::GetDefaultCompletionAction();
-  dbus_object_.RegisterAsync(handler);
-  dbus_registration_handler_.Reset();
+  CreateServicesForClients();
 }
 
 void Manager::Stop() {
-  command_dispatcher_.reset();
   device_.reset();
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   web_serv_client_.reset();
@@ -273,139 +275,195 @@ void Manager::Stop() {
   task_runner_.reset();
 }
 
-void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
-                             const std::string& ticket_id) {
-  LOG(INFO) << "Received call to Manager.RegisterDevice()";
-
-  device_->Register(ticket_id, base::Bind(&Manager::RegisterDeviceDone,
-                                          weak_ptr_factory_.GetWeakPtr(),
-                                          base::Passed(&response)));
-}
-
-void Manager::RegisterDeviceDone(DBusMethodResponsePtr<std::string> response,
-                                 weave::ErrorPtr error) {
-  if (error) {
-    brillo::ErrorPtr brillo_error;
-    ConvertError(*error, &brillo_error);
-    return response->ReplyWithError(brillo_error.get());
-  }
-  LOG(INFO) << "Device registered: " << device_->GetSettings().cloud_id;
-  response->Return(device_->GetSettings().cloud_id);
-}
-
-void Manager::AddComponent(DBusMethodResponsePtr<> response,
-                           const std::string& name,
-                           const std::vector<std::string>& traits) {
-  brillo::ErrorPtr brillo_error;
-  weave::ErrorPtr error;
-  if (!device_->AddComponent(name, traits, &error)) {
-    ConvertError(*error, &brillo_error);
-    return response->ReplyWithError(brillo_error.get());
-  }
-  response->Return();
-}
-
-void Manager::UpdateState(DBusMethodResponsePtr<> response,
-                          const std::string& component,
-                          const brillo::VariantDictionary& property_set) {
-  brillo::ErrorPtr brillo_error;
-  auto properties =
-      DictionaryFromDBusVariantDictionary(property_set, &brillo_error);
-  if (!properties)
-    return response->ReplyWithError(brillo_error.get());
-
-  weave::ErrorPtr error;
-  if (!device_->SetStateProperties(component, *properties, &error)) {
-    ConvertError(*error, &brillo_error);
-    return response->ReplyWithError(brillo_error.get());
-  }
-  response->Return();
-}
-
-void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
-                         const std::string& json_command) {
-  std::string error_message;
-  std::unique_ptr<base::Value> value(
-      base::JSONReader::ReadAndReturnError(json_command, base::JSON_PARSE_RFC,
-                                           nullptr, &error_message)
-          .release());
-  const base::DictionaryValue* command{nullptr};
-  if (!value || !value->GetAsDictionary(&command)) {
-    return response->ReplyWithError(FROM_HERE, brillo::errors::json::kDomain,
-                                    brillo::errors::json::kParseError,
-                                    error_message);
-  }
-
-  std::string id;
-  weave::ErrorPtr error;
-  if (!device_->AddCommand(*command, &id, &error)) {
-    brillo::ErrorPtr brillo_error;
-    ConvertError(*error, &brillo_error);
-    return response->ReplyWithError(brillo_error.get());
-  }
-
-  response->Return(id);
-}
-
-std::string Manager::TestMethod(const std::string& message) {
-  LOG(INFO) << "Received call to test method: " << message;
-  return message;
-}
-
 void Manager::OnTraitDefsChanged() {
-  const base::DictionaryValue& state = device_->GetTraits();
-  std::string json;
-  base::JSONWriter::WriteWithOptions(
-      state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
-  dbus_adaptor_.SetTraits(json);
+  NotifyServiceManagerChange({NotificationListener::TRAITS});
 }
 
 void Manager::OnComponentTreeChanged() {
-  const base::DictionaryValue& state = device_->GetComponents();
-  std::string json;
-  base::JSONWriter::WriteWithOptions(
-      state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
-  dbus_adaptor_.SetComponents(json);
+  NotifyServiceManagerChange({NotificationListener::COMPONENTS});
 }
 
 void Manager::OnGcdStateChanged(weave::GcdState state) {
-  std::string state_string = weave::EnumToString(state);
-  dbus_adaptor_.SetStatus(state_string);
-  property_set(weaved::system_properties::kState, state_string.c_str());
+  state_ = weave::EnumToString(state);
+  NotifyServiceManagerChange({NotificationListener::STATE});
+  property_set(weaved::system_properties::kState, state_.c_str());
 }
 
 void Manager::OnConfigChanged(const weave::Settings& settings) {
-  dbus_adaptor_.SetDeviceId(settings.cloud_id);
-  dbus_adaptor_.SetOemName(settings.oem_name);
-  dbus_adaptor_.SetModelName(settings.model_name);
-  dbus_adaptor_.SetModelId(settings.model_id);
-  dbus_adaptor_.SetName(settings.name);
-  dbus_adaptor_.SetDescription(settings.description);
-  dbus_adaptor_.SetLocation(settings.location);
+  std::vector<int> ids;
+  UpdateValue(this, &Manager::cloud_id_, settings.cloud_id,
+              NotificationListener::CLOUD_ID, &ids);
+  UpdateValue(this, &Manager::device_id_, settings.device_id,
+              NotificationListener::DEVICE_ID, &ids);
+  UpdateValue(this, &Manager::device_name_, settings.name,
+              NotificationListener::DEVICE_NAME, &ids);
+  UpdateValue(this, &Manager::device_description_, settings.description,
+              NotificationListener::DEVICE_DESCRIPTION, &ids);
+  UpdateValue(this, &Manager::device_location_, settings.location,
+              NotificationListener::DEVICE_LOCATION, &ids);
+  UpdateValue(this, &Manager::oem_name_, settings.oem_name,
+              NotificationListener::OEM_NAME, &ids);
+  UpdateValue(this, &Manager::model_id_, settings.model_id,
+              NotificationListener::MODEL_ID, &ids);
+  UpdateValue(this, &Manager::model_name_, settings.model_name,
+              NotificationListener::MODEL_NAME, &ids);
+  NotifyServiceManagerChange(ids);
 }
 
 void Manager::OnPairingStart(const std::string& session_id,
                              weave::PairingType pairing_type,
                              const std::vector<uint8_t>& code) {
-  // For now, just overwrite the exposed PairInfo with
-  // the most recent pairing attempt.
-  dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{
-      {kPairingSessionIdKey, session_id},
-      {kPairingModeKey, weave::EnumToString(pairing_type)},
-      {kPairingCodeKey, code},
-  });
+  // For now, just overwrite the exposed PairInfo with the most recent pairing
+  // attempt.
+  std::vector<int> ids;
+  UpdateValue(this, &Manager::pairing_session_id_, session_id,
+              NotificationListener::PAIRING_SESSION_ID, &ids);
+  UpdateValue(this, &Manager::pairing_mode_, EnumToString(pairing_type),
+              NotificationListener::PAIRING_MODE, &ids);
+  std::string pairing_code{code.begin(), code.end()};
+  UpdateValue(this, &Manager::pairing_code_, pairing_code,
+              NotificationListener::PAIRING_CODE, &ids);
+  NotifyServiceManagerChange(ids);
 }
 
 void Manager::OnPairingEnd(const std::string& session_id) {
-  auto exposed_pairing_attempt = dbus_adaptor_.GetPairingInfo();
-  auto it = exposed_pairing_attempt.find(kPairingSessionIdKey);
-  if (it == exposed_pairing_attempt.end()) {
+  if (pairing_session_id_ != session_id)
     return;
+  std::vector<int> ids;
+  UpdateValue(this, &Manager::pairing_session_id_, "",
+              NotificationListener::PAIRING_SESSION_ID, &ids);
+  UpdateValue(this, &Manager::pairing_mode_, "",
+              NotificationListener::PAIRING_MODE, &ids);
+  UpdateValue(this, &Manager::pairing_code_, "",
+              NotificationListener::PAIRING_CODE, &ids);
+  NotifyServiceManagerChange(ids);
+}
+
+android::binder::Status Manager::connect(
+    const android::sp<android::weave::IWeaveClient>& client) {
+  pending_clients_.push_back(client);
+  if (device_)
+    CreateServicesForClients();
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::registerNotificationListener(
+    const WeaveServiceManagerNotificationListener& listener) {
+  notification_listeners_.insert(listener);
+  android::BinderWrapper::Get()->RegisterForDeathNotifications(
+      android::IInterface::asBinder(listener),
+      base::Bind(&Manager::OnNotificationListenerDestroyed,
+                 weak_ptr_factory_.GetWeakPtr(), listener));
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getCloudId(android::String16* id) {
+  *id = weaved::binder_utils::ToString16(cloud_id_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getDeviceId(android::String16* id) {
+  *id = weaved::binder_utils::ToString16(device_id_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getDeviceName(android::String16* name) {
+  *name = weaved::binder_utils::ToString16(device_name_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getDeviceDescription(
+    android::String16* description) {
+  *description = weaved::binder_utils::ToString16(device_description_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getDeviceLocation(
+    android::String16* location) {
+  *location = weaved::binder_utils::ToString16(device_location_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getOemName(android::String16* name) {
+  *name = weaved::binder_utils::ToString16(oem_name_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getModelName(android::String16* name) {
+  *name = weaved::binder_utils::ToString16(model_name_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getModelId(android::String16* id) {
+  *id = weaved::binder_utils::ToString16(model_id_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getPairingSessionId(android::String16* id) {
+  *id = weaved::binder_utils::ToString16(pairing_session_id_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getPairingMode(android::String16* mode) {
+  *mode = weaved::binder_utils::ToString16(pairing_mode_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getPairingCode(android::String16* code) {
+  *code = weaved::binder_utils::ToString16(pairing_code_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getState(android::String16* state) {
+  *state = weaved::binder_utils::ToString16(state_);
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getTraits(android::String16* traits) {
+  *traits = weaved::binder_utils::ToString16(device_->GetTraits());
+  return android::binder::Status::ok();
+}
+
+android::binder::Status Manager::getComponents(android::String16* components) {
+  *components = weaved::binder_utils::ToString16(device_->GetComponents());
+  return android::binder::Status::ok();
+}
+
+void Manager::CreateServicesForClients() {
+  CHECK(device_);
+  // For safety, iterate over a copy of |pending_clients_| and clear the
+  // original vector before performing the iterations.
+  std::vector<android::sp<android::weave::IWeaveClient>> pending_clients_copy;
+  std::swap(pending_clients_copy, pending_clients_);
+  for (const auto& client : pending_clients_copy) {
+    android::sp<BinderWeaveService> service =
+        new BinderWeaveService{device_.get(), client};
+    services_.emplace(client, service);
+    client->onServiceConnected(service);
+    android::BinderWrapper::Get()->RegisterForDeathNotifications(
+        android::IInterface::asBinder(client),
+        base::Bind(&Manager::OnClientDisconnected,
+                   weak_ptr_factory_.GetWeakPtr(),
+                   client));
   }
-  std::string exposed_session{it->second.TryGet<std::string>()};
-  if (exposed_session == session_id) {
-    dbus_adaptor_.SetPairingInfo(brillo::VariantDictionary{});
-  }
+}
+
+void Manager::OnClientDisconnected(
+    const android::sp<android::weave::IWeaveClient>& client) {
+  services_.erase(client);
+}
+
+void Manager::OnNotificationListenerDestroyed(
+    const WeaveServiceManagerNotificationListener& notification_listener) {
+  notification_listeners_.erase(notification_listener);
+}
+
+void Manager::NotifyServiceManagerChange(
+    const std::vector<int>& notification_ids) {
+  if (notification_ids.empty())
+    return;
+  for (const auto& listener : notification_listeners_)
+    listener->notifyServiceManagerChange(notification_ids);
 }
 
 }  // namespace buffet

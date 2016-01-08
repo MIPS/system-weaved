@@ -1,4 +1,4 @@
-// Copyright 2015 The Android Open Source Project
+// Copyright 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "buffet/dbus_constants.h"
+#include "common/binder_constants.h"
 
-namespace buffet {
+namespace weaved {
+namespace binder {
 
-namespace dbus_constants {
+const char kWeaveServiceName[] = "weave_service";
 
-const char kServiceName[] = "com.android.Weave";
-const char kRootServicePath[] = "/com/android/Weave";
-
-}  // namespace dbus constants
-
-}  // namespace buffet
+}  // namespace binder
+}  // namespace weaved
