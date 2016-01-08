@@ -23,6 +23,7 @@
 #include <brillo/message_loops/message_loop.h>
 
 #include "android/weave/BnWeaveClient.h"
+#include "android/weave/BnWeaveServiceManagerNotificationListener.h"
 #include "android/weave/IWeaveCommand.h"
 #include "android/weave/IWeaveService.h"
 #include "android/weave/IWeaveServiceManager.h"
@@ -139,6 +140,22 @@ class WeaveClient : public android::weave::BnWeaveClient {
   DISALLOW_COPY_AND_ASSIGN(WeaveClient);
 };
 
+class NotificationListener
+    : public android::weave::BnWeaveServiceManagerNotificationListener {
+ public:
+  explicit NotificationListener(const std::weak_ptr<ServiceImpl>& service);
+
+ private:
+  // Implementation for IWeaveServiceManagerNotificationListener interface.
+  android::binder::Status notifyServiceManagerChange(
+      const std::vector<int>& notificationIds) override;
+
+  std::weak_ptr<ServiceImpl> service_;
+
+  base::WeakPtrFactory<NotificationListener> weak_ptr_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(NotificationListener);
+};
+
 // ServiceImpl is a concrete implementation of weaved::Service interface.
 // This object is a wrapper around android::weave::IWeaveService binder
 // interface to weaved daemon.
@@ -175,6 +192,7 @@ class ServiceImpl : public std::enable_shared_from_this<ServiceImpl>,
                         const std::string& property_name,
                         const brillo::Any& value,
                         brillo::ErrorPtr* error) override;
+  void SetPairingInfoListener(const PairingInfoCallback& callback) override;
 
   // Helper method called from Service::Connect() to initiate binder connection
   // to weaved. This message just posts a task to the message loop to invoke
@@ -189,6 +207,9 @@ class ServiceImpl : public std::enable_shared_from_this<ServiceImpl>,
   void OnCommand(const std::string& component_name,
                  const std::string& command_name,
                  const android::sp<android::weave::IWeaveCommand>& command);
+
+  // A callback method for NotificationListener::notifyServiceManagerChange().
+  void OnNotification(const std::vector<int>& notification_ids);
 
  private:
   // Connects to weaved daemon over binder if the service manager is available
@@ -205,7 +226,10 @@ class ServiceImpl : public std::enable_shared_from_this<ServiceImpl>,
   brillo::MessageLoop* message_loop_;
   ServiceSubscription* service_subscription_;
   ConnectionCallback connection_callback_;
+  android::sp<android::weave::IWeaveServiceManager> weave_service_manager_;
   android::sp<android::weave::IWeaveService> weave_service_;
+  PairingInfoCallback pairing_info_callback_;
+  PairingInfo pairing_info_;
 
   struct CommandHandlerEntry {
     std::string component;
@@ -242,6 +266,18 @@ android::binder::Status WeaveClient::onCommand(
     command->abort(android::String16{"service_unavailable"},
                    android::String16{"Command handler is unavailable"});
   }
+  return android::binder::Status::ok();
+}
+
+NotificationListener::NotificationListener(
+    const std::weak_ptr<ServiceImpl>& service)
+    : service_{service} {}
+
+android::binder::Status NotificationListener::notifyServiceManagerChange(
+    const std::vector<int>& notificationIds) {
+  auto service_proxy = service_.lock();
+  if (service_proxy)
+    service_proxy->OnNotification(notificationIds);
   return android::binder::Status::ok();
 }
 
@@ -324,6 +360,16 @@ bool ServiceImpl::SetStateProperty(const std::string& component,
                             error);
 }
 
+void ServiceImpl::SetPairingInfoListener(const PairingInfoCallback& callback) {
+  pairing_info_callback_ = callback;
+  if (!pairing_info_callback_.is_null() &&
+      !pairing_info_.session_id.empty() &&
+      !pairing_info_.pairing_mode.empty() &&
+      !pairing_info_.pairing_code.empty()) {
+    callback.Run(&pairing_info_);
+  }
+}
+
 void ServiceImpl::BeginConnect() {
   message_loop_->PostTask(FROM_HERE,
                           base::Bind(&ServiceImpl::TryConnecting,
@@ -374,10 +420,13 @@ void ServiceImpl::TryConnecting() {
     return;
   }
 
-  auto service_manager =
+  weave_service_manager_ =
       android::interface_cast<android::weave::IWeaveServiceManager>(binder);
   android::sp<WeaveClient> weave_client = new WeaveClient{shared_from_this()};
-  service_manager->connect(weave_client);
+  weave_service_manager_->connect(weave_client);
+  android::sp<NotificationListener> notification_listener =
+      new NotificationListener{shared_from_this()};
+  weave_service_manager_->registerNotificationListener(notification_listener);
 }
 
 void ServiceImpl::OnWeaveServiceDisconnected() {
@@ -393,6 +442,45 @@ void ServiceImpl::OnWeaveServiceDisconnected() {
   service_subscription_->SetService(service);
   // Do not call any methods or use resources of ServiceImpl after this point
   // because the object is destroyed now.
+}
+
+void ServiceImpl::OnNotification(const std::vector<int>& notification_ids) {
+  bool pairing_info_changed = false;
+  using NotificationListener =
+      android::weave::IWeaveServiceManagerNotificationListener;
+  android::String16 string_value;
+  for (int id : notification_ids) {
+    switch (id) {
+      case NotificationListener::PAIRING_SESSION_ID:
+        if (weave_service_manager_->getPairingSessionId(&string_value).isOk()) {
+          pairing_info_changed = true;
+          pairing_info_.session_id = ToString(string_value);
+        }
+        break;
+      case NotificationListener::PAIRING_MODE:
+        if (weave_service_manager_->getPairingMode(&string_value).isOk()) {
+          pairing_info_changed = true;
+          pairing_info_.pairing_mode = ToString(string_value);
+        }
+        break;
+      case NotificationListener::PAIRING_CODE:
+        if (weave_service_manager_->getPairingCode(&string_value).isOk()) {
+          pairing_info_changed = true;
+          pairing_info_.pairing_code = ToString(string_value);
+        }
+        break;
+    }
+  }
+
+  if (!pairing_info_changed || pairing_info_callback_.is_null())
+    return;
+
+  if (pairing_info_.session_id.empty() || pairing_info_.pairing_mode.empty() ||
+      pairing_info_.pairing_code.empty()) {
+    pairing_info_callback_.Run(nullptr);
+  } else {
+    pairing_info_callback_.Run(&pairing_info_);
+  }
 }
 
 std::unique_ptr<Service::Subscription> Service::Connect(
