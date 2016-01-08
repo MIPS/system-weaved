@@ -25,6 +25,34 @@ using weaved::binder_utils::StatusToError;
 
 namespace weaved {
 
+namespace {
+
+// Converts binder exception code into a weave error code string.
+std::string BinderExceptionString(int32_t exception_code) {
+  if (exception_code == android::binder::Status::EX_NONE)
+    return "_none";
+  else if (exception_code == android::binder::Status::EX_SECURITY)
+    return "_security";
+  else if (exception_code == android::binder::Status::EX_BAD_PARCELABLE)
+    return "_bad_parcelable";
+  else if (exception_code == android::binder::Status::EX_ILLEGAL_ARGUMENT)
+    return "_illegal_argument";
+  else if (exception_code == android::binder::Status::EX_NULL_POINTER)
+    return "_null_pointer";
+  else if (exception_code == android::binder::Status::EX_ILLEGAL_STATE)
+    return "_illegal_state";
+  else if (exception_code == android::binder::Status::EX_NETWORK_MAIN_THREAD)
+    return "_network_error";
+  else if (exception_code == android::binder::Status::EX_UNSUPPORTED_OPERATION)
+    return "_unsupported_operation";
+  else if (exception_code == android::binder::Status::EX_SERVICE_SPECIFIC)
+    return "_general_failure";
+
+  return "_unknown";
+}
+
+}  // anonymous namespace
+
 Command::Command(const android::sp<android::weave::IWeaveCommand>& proxy)
     : binder_proxy_{proxy} {}
 
@@ -125,8 +153,44 @@ bool Command::Abort(const std::string& error_code,
                        error);
 }
 
+bool Command::AbortWithCustomError(const brillo::Error* command_error,
+                                   brillo::ErrorPtr* error) {
+  std::string error_code = "_" + command_error->GetCode();
+  return Abort(error_code, command_error->GetMessage(), error);
+}
+
+bool Command::AbortWithCustomError(android::binder::Status status,
+                                   brillo::ErrorPtr* error) {
+  std::string error_code = BinderExceptionString(status.exceptionCode());
+  return Abort(error_code, status.exceptionMessage().string(), error);
+}
+
 bool Command::Cancel(brillo::ErrorPtr* error) {
   return StatusToError(binder_proxy_->cancel(), error);
+}
+
+bool Command::Pause(brillo::ErrorPtr* error) {
+  return StatusToError(binder_proxy_->pause(), error);
+}
+
+bool Command::SetError(const std::string& error_code,
+                       const std::string& error_message,
+                       brillo::ErrorPtr* error) {
+  return StatusToError(binder_proxy_->setError(ToString16(error_code),
+                                               ToString16(error_message)),
+                       error);
+}
+
+bool Command::SetCustomError(const brillo::Error* command_error,
+                             brillo::ErrorPtr* error) {
+  std::string error_code = "_" + command_error->GetCode();
+  return SetError(error_code, command_error->GetMessage(), error);
+}
+
+bool Command::SetCustomError(android::binder::Status status,
+                             brillo::ErrorPtr* error) {
+  std::string error_code = BinderExceptionString(status.exceptionCode());
+  return SetError(error_code, status.exceptionMessage().string(), error);
 }
 
 }  // namespace weave
