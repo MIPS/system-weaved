@@ -43,6 +43,15 @@ class LIBWEAVED_EXPORT Service {
   using CommandHandlerCallback =
       base::Callback<void(std::unique_ptr<Command> command)>;
 
+  // Callback type for AddPairingInfoListener.
+  struct PairingInfo {
+    std::string session_id;
+    std::string pairing_mode;
+    std::string pairing_code;
+  };
+  using PairingInfoCallback =
+      base::Callback<void(const PairingInfo* pairing_info)>;
+
   Service() = default;
   virtual ~Service() = default;
 
@@ -77,6 +86,12 @@ class LIBWEAVED_EXPORT Service {
                                 const std::string& property_name,
                                 const brillo::Any& value,
                                 brillo::ErrorPtr* error) = 0;
+
+  // Specifies a callback to be invoked when the device enters/exist pairing
+  // mode. The |pairing_info| parameter is set to a pointer to pairing
+  // information on starting the pairing session and is nullptr when the pairing
+  // session ends.
+  virtual void SetPairingInfoListener(const PairingInfoCallback& callback) = 0;
 
   // Service creation functionality.
   // Subscription is a base class for an object responsible for life-time
