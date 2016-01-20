@@ -162,6 +162,7 @@ TEST(DBusConversionTest, VariantDictionaryToDictionaryValue) {
   EXPECT_JSON_EQ("{'bool': true}", *FromVariant({{"bool", true}}));
   EXPECT_JSON_EQ("{'int': 5}", *FromVariant({{"int", 5}}));
   EXPECT_JSON_EQ("{'double': 6.7}", *FromVariant({{"double", 6.7}}));
+  EXPECT_JSON_EQ("{'cString': 'abc'}", *FromVariant({{"cString", "abc"}}));
   EXPECT_JSON_EQ("{'string': 'abc'}",
                  *FromVariant({{"string", std::string{"abc"}}}));
   EXPECT_JSON_EQ("{'object': {'bool': true}}",
@@ -183,7 +184,6 @@ TEST(DBusConversionTest, VariantDictionaryToDictionaryValue) {
 }
 
 TEST(DBusConversionTest, VariantDictionaryToDictionaryValueErrors) {
-  EXPECT_FALSE(FromVariant({{"cString", "abc"}}));
   EXPECT_FALSE(FromVariant({{"float", 1.0f}}));
   EXPECT_FALSE(FromVariant({{"listList", std::vector<std::vector<int>>{}}}));
   EXPECT_FALSE(FromVariant({{"any", Any{}}}));
