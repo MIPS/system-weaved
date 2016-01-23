@@ -23,20 +23,34 @@
 
 namespace buffet {
 
-template <class Source, class Destination>
-void ConvertError(const Source& source,
-                  std::unique_ptr<Destination>* destination) {
-  const Source* inner_error = source.GetInnerError();
+inline void ConvertError(const weave::Error& source,
+                         std::unique_ptr<brillo::Error>* destination) {
+  const weave::Error* inner_error = source.GetInnerError();
   if (inner_error)
     ConvertError(*inner_error, destination);
 
   const auto& location = source.GetLocation();
-  Destination::AddTo(
+  brillo::Error::AddTo(
       destination,
       tracked_objects::Location{
           location.function_name.c_str(), location.file_name.c_str(),
           location.line_number, tracked_objects::GetProgramCounter()},
-      source.GetDomain(), source.GetCode(), source.GetMessage());
+      "weave", source.GetCode(), source.GetMessage());
+}
+
+inline void ConvertError(const brillo::Error& source,
+                         std::unique_ptr<weave::Error>* destination) {
+  const brillo::Error* inner_error = source.GetInnerError();
+  if (inner_error)
+    ConvertError(*inner_error, destination);
+
+  const auto& location = source.GetLocation();
+  weave::Error::AddTo(
+      destination,
+      tracked_objects::Location{
+          location.function_name.c_str(), location.file_name.c_str(),
+          location.line_number, tracked_objects::GetProgramCounter()},
+      source.GetCode(), source.GetMessage());
 }
 
 }  // namespace buffet

@@ -28,8 +28,6 @@ namespace buffet {
 
 namespace {
 
-const char kErrorDomain[] = "weaved";
-
 android::binder::Status ReportDestroyedError() {
   return android::binder::Status::fromServiceSpecificError(
       1, android::String8{"Command has been destroyed"});
@@ -144,8 +142,8 @@ android::binder::Status BinderCommandProxy::abort(
   if (!command)
     return ReportDestroyedError();
   weave::ErrorPtr command_error;
-  weave::Error::AddTo(&command_error, FROM_HERE, kErrorDomain,
-                      ToString(errorCode), ToString(errorMessage));
+  weave::Error::AddTo(&command_error, FROM_HERE, ToString(errorCode),
+                      ToString(errorMessage));
   weave::ErrorPtr error;
   return ToStatus(command->Abort(command_error.get(), &error), &error);
 }
@@ -173,8 +171,8 @@ android::binder::Status BinderCommandProxy::setError(
   if (!command)
     return ReportDestroyedError();
   weave::ErrorPtr command_error;
-  weave::Error::AddTo(&command_error, FROM_HERE, kErrorDomain,
-                      ToString(errorCode), ToString(errorMessage));
+  weave::Error::AddTo(&command_error, FROM_HERE, ToString(errorCode),
+                      ToString(errorMessage));
   weave::ErrorPtr error;
   return ToStatus(command->SetError(command_error.get(), &error), &error);
 }
