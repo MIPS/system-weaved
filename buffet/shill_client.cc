@@ -44,8 +44,6 @@ namespace buffet {
 
 namespace {
 
-const char kErrorDomain[] = "buffet";
-
 void IgnoreDetachEvent() {}
 
 bool GetStateForService(ServiceProxy* service, string* state) {
@@ -143,7 +141,7 @@ void ShillClient::Connect(const string& ssid,
   LOG(INFO) << "Connecting to WiFi network: " << ssid;
   if (connecting_service_) {
     weave::ErrorPtr error;
-    weave::Error::AddTo(&error, FROM_HERE, kErrorDomain, "busy",
+    weave::Error::AddTo(&error, FROM_HERE, "busy",
                         "Already connecting to WiFi network");
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(callback, base::Passed(&error)));
@@ -494,7 +492,7 @@ void ShillClient::OnErrorChangeForConnectingService(const std::string& error) {
   CleanupConnectingService();
 
   weave::ErrorPtr weave_error;
-  weave::Error::AddTo(&weave_error, FROM_HERE, kErrorDomain, error,
+  weave::Error::AddTo(&weave_error, FROM_HERE, error,
                       "Failed to connect to WiFi network");
 
   if (!callback.is_null())
