@@ -16,7 +16,6 @@
 
 #include "android/weave/IWeaveCommand.h"
 #include "common/binder_utils.h"
-#include "common/data_conversion.h"
 
 using weaved::binder_utils::ParseDictionary;
 using weaved::binder_utils::ToString;
@@ -120,29 +119,25 @@ Command::Origin Command::GetOrigin() const {
   return Command::Origin::kLocal;
 }
 
-brillo::VariantDictionary Command::GetParameters() const {
-  brillo::VariantDictionary params;
-  android::String16 params_string16;
-  if (binder_proxy_->getParameters(&params_string16).isOk()) {
-    std::unique_ptr<base::DictionaryValue> dict;
-    if (ParseDictionary(params_string16, &dict).isOk())
-      params = details::DictionaryValueToVariantDictionary(*dict);
+const base::DictionaryValue& Command::GetParameters() const {
+  if (!parameter_cache_) {
+    android::String16 params_string16;
+    if (!binder_proxy_->getParameters(&params_string16).isOk() ||
+        !ParseDictionary(params_string16, &parameter_cache_).isOk()) {
+      parameter_cache_.reset(new base::DictionaryValue);
+    }
   }
-  return params;
+  return *parameter_cache_;
 }
 
-bool Command::SetProgress(const brillo::VariantDictionary& progress,
+bool Command::SetProgress(const base::DictionaryValue& progress,
                           brillo::ErrorPtr* error) {
-  auto dict = details::VariantDictionaryToDictionaryValue(progress, error);
-  return dict && StatusToError(binder_proxy_->setProgress(ToString16(*dict)),
-                               error);
+  return StatusToError(binder_proxy_->setProgress(ToString16(progress)), error);
 }
 
-bool Command::Complete(const brillo::VariantDictionary& results,
+bool Command::Complete(const base::DictionaryValue& results,
                        brillo::ErrorPtr* error) {
-  auto dict = details::VariantDictionaryToDictionaryValue(results, error);
-  return dict && StatusToError(binder_proxy_->complete(ToString16(*dict)),
-                               error);
+  return StatusToError(binder_proxy_->complete(ToString16(results)), error);
 }
 
 bool Command::Abort(const std::string& error_code,

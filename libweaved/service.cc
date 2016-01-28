@@ -29,7 +29,6 @@
 #include "android/weave/IWeaveServiceManager.h"
 #include "common/binder_constants.h"
 #include "common/binder_utils.h"
-#include "common/data_conversion.h"
 
 using weaved::binder_utils::StatusToError;
 using weaved::binder_utils::ToString;
@@ -185,12 +184,12 @@ class ServiceImpl : public std::enable_shared_from_this<ServiceImpl>,
                          const std::string& command_name,
                          const CommandHandlerCallback& callback) override;
   bool SetStateProperties(const std::string& component,
-                          const brillo::VariantDictionary& dict,
+                          const base::DictionaryValue& dict,
                           brillo::ErrorPtr* error) override;
   bool SetStateProperty(const std::string& component,
                         const std::string& trait_name,
                         const std::string& property_name,
-                        const brillo::Any& value,
+                        const base::Value& value,
                         brillo::ErrorPtr* error) override;
   void SetPairingInfoListener(const PairingInfoCallback& callback) override;
 
@@ -337,27 +336,25 @@ void ServiceImpl::AddCommandHandler(const std::string& component,
 }
 
 bool ServiceImpl::SetStateProperties(const std::string& component,
-                                     const brillo::VariantDictionary& dict,
+                                     const base::DictionaryValue& dict,
                                      brillo::ErrorPtr* error) {
   CHECK(!component.empty());
   CHECK(weave_service_.get());
-  auto properties = details::VariantDictionaryToDictionaryValue(dict, error);
-  if (!properties)
-    return false;
   return StatusToError(weave_service_->updateState(ToString16(component),
-                                                   ToString16(*properties)),
+                                                   ToString16(dict)),
                        error);
 }
 
 bool ServiceImpl::SetStateProperty(const std::string& component,
                                    const std::string& trait_name,
                                    const std::string& property_name,
-                                   const brillo::Any& value,
+                                   const base::Value& value,
                                    brillo::ErrorPtr* error) {
   std::string name =
       base::StringPrintf("%s.%s", trait_name.c_str(), property_name.c_str());
-  return SetStateProperties(component, brillo::VariantDictionary{{name, value}},
-                            error);
+  base::DictionaryValue dict;
+  dict.Set(name, value.DeepCopy());
+  return SetStateProperties(component, dict, error);
 }
 
 void ServiceImpl::SetPairingInfoListener(const PairingInfoCallback& callback) {

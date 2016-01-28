@@ -84,7 +84,6 @@ LOCAL_SRC_FILES := \
 	brillo/android/weave/IWeaveServiceManagerNotificationListener.aidl \
 	common/binder_constants.cc \
 	common/binder_utils.cc \
-	common/data_conversion.cc \
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -165,7 +164,13 @@ LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
 LOCAL_C_INCLUDES := external/gtest/include
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
-LOCAL_SHARED_LIBRARIES := $(buffetSharedLibraries)
+LOCAL_SHARED_LIBRARIES := \
+	libbinder \
+	libbinderwrapper \
+	libbrillo \
+	libchrome \
+	libutils \
+
 LOCAL_STATIC_LIBRARIES := weave-common
 
 LOCAL_CLANG := true
@@ -206,6 +211,5 @@ LOCAL_SRC_FILES := \
 	buffet/binder_command_proxy_unittest.cc \
 	buffet/buffet_config_unittest.cc \
 	buffet/buffet_testrunner.cc \
-	common/data_conversion_unittest.cc \
 
 include $(BUILD_NATIVE_TEST)
