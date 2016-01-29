@@ -20,7 +20,7 @@
 #include <base/macros.h>
 #include <binder/Status.h>
 #include <brillo/errors/error.h>
-#include <brillo/variant_dictionary.h>
+#include <brillo/value_conversion.h>
 #include <libweaved/export.h>
 #include <utils/StrongPointer.h>
 
@@ -33,30 +33,6 @@ class IWeaveCommand;
 namespace weaved {
 
 class ServiceImpl;
-
-namespace detail {
-
-// Helper function for Command::GetParameter<T>. Allows specialization.
-template <typename T>
-inline bool GetValue(const brillo::Any& any, T* value) {
-  return any.GetValue<T>(value);
-}
-
-// Specialization for double, allow to extract a double from an int.
-template <>
-inline bool GetValue<double>(const brillo::Any& any, double* value) {
-  if (any.GetValue<double>(value))
-    return true;
-
-  int int_val = 0;
-  if (!any.GetValue<int>(&int_val))
-    return false;
-
-  *value = static_cast<double>(int_val);
-  return true;
-}
-
-}  // namespace detail
 
 class LIBWEAVED_EXPORT Command final {
  public:
@@ -91,7 +67,7 @@ class LIBWEAVED_EXPORT Command final {
   Command::Origin GetOrigin() const;
 
   // Returns the command parameters.
-  brillo::VariantDictionary GetParameters() const;
+  const base::DictionaryValue& GetParameters() const;
 
   // Helper function to get a command parameter of particular type T from the
   // command parameter list. Returns default value for type T (e.g. 0 for int or
@@ -99,23 +75,23 @@ class LIBWEAVED_EXPORT Command final {
   // is of incorrect type.
   template <typename T>
   T GetParameter(const std::string& name) const {
-    const brillo::VariantDictionary& parameters = GetParameters();
-    T value{};
-    auto p = parameters.find(name);
-    if (p != parameters.end())
-      detail::GetValue<T>(p->second, &value);
-    return value;
+    const base::DictionaryValue& parameters = GetParameters();
+    T param_value{};
+    const base::Value* value = nullptr;
+    if (parameters.Get(name, &value))
+      brillo::FromValue(*value, &param_value);
+    return param_value;
   }
 
   // Updates the command progress. The |progress| should match the schema.
   // Returns false if |progress| value is incorrect.
-  bool SetProgress(const brillo::VariantDictionary& progress,
+  bool SetProgress(const base::DictionaryValue& progress,
                    brillo::ErrorPtr* error);
 
   // Sets command into terminal "done" state.
   // Updates the command results. The |results| should match the schema.
   // Returns false if |results| value is incorrect.
-  bool Complete(const brillo::VariantDictionary& results,
+  bool Complete(const base::DictionaryValue& results,
                 brillo::ErrorPtr* error);
 
   // Aborts command execution.
@@ -166,6 +142,7 @@ class LIBWEAVED_EXPORT Command final {
  private:
   friend class ServiceImpl;
   android::sp<android::weave::IWeaveCommand> binder_proxy_;
+  mutable std::unique_ptr<base::DictionaryValue> parameter_cache_;
 
   DISALLOW_COPY_AND_ASSIGN(Command);
 };

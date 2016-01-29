@@ -22,8 +22,12 @@
 #include <binder/Status.h>
 #include <utils/String8.h>
 #include <utils/String16.h>
-#include <weave/error.h>
 #include <brillo/errors/error.h>
+
+namespace weave {
+class Error;  // Forward declaration.
+using ErrorPtr = std::unique_ptr<Error>;
+}  // namespace weave
 
 namespace weaved {
 namespace binder_utils {

@@ -74,7 +74,7 @@ class LIBWEAVED_EXPORT Service {
   // Sets a number of state properties for a given |component|.
   // |dict| is a dictionary containing property-name/property-value pairs.
   virtual bool SetStateProperties(const std::string& component,
-                                  const brillo::VariantDictionary& dict,
+                                  const base::DictionaryValue& dict,
                                   brillo::ErrorPtr* error) = 0;
 
   // Sets value of the single property.
@@ -84,7 +84,7 @@ class LIBWEAVED_EXPORT Service {
   virtual bool SetStateProperty(const std::string& component,
                                 const std::string& trait_name,
                                 const std::string& property_name,
-                                const brillo::Any& value,
+                                const base::Value& value,
                                 brillo::ErrorPtr* error) = 0;
 
   // Specifies a callback to be invoked when the device enters/exist pairing
