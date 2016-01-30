@@ -48,7 +48,6 @@ class BuffetConfig final : public weave::provider::ConfigStore {
     base::FilePath definitions;
     base::FilePath test_definitions;
 
-    bool disable_security{false};
     std::string test_privet_ssid;
   };
 

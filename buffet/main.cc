@@ -94,8 +94,6 @@ int main(int argc, char* argv[]) {
                 "Comma separated list of network interfaces to monitor for "
                 "connectivity (an empty list enables all interfaces).");
 
-  DEFINE_bool(disable_security, false,
-              "disable Privet security for tests. For test only.");
   DEFINE_string(test_privet_ssid, "",
                 "Fixed SSID for WiFi bootstrapping. For test only.");
   DEFINE_string(test_definitions_path, "",
@@ -131,7 +129,6 @@ int main(int argc, char* argv[]) {
   options.config_options.definitions = base::FilePath{"/etc/weaved"};
   options.config_options.test_definitions =
       base::FilePath{FLAGS_test_definitions_path};
-  options.config_options.disable_security = FLAGS_disable_security;
   options.config_options.test_privet_ssid = FLAGS_test_privet_ssid;
 
   buffet::Daemon daemon{options};

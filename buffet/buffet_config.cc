@@ -100,7 +100,6 @@ bool BuffetConfig::LoadDefaults(weave::Settings* settings) {
   if (!store.Load(options_.defaults))
     return false;
   bool result = LoadDefaults(store, settings);
-  settings->disable_security = options_.disable_security;
   settings->test_privet_ssid = options_.test_privet_ssid;
 
   if (!options_.client_id.empty())
