@@ -66,8 +66,11 @@ class BuffetConfig final : public weave::provider::ConfigStore {
 
   // Config overrides.
   bool LoadDefaults(weave::Settings* settings) override;
+  std::string LoadSettings(const std::string& name) override;
   std::string LoadSettings() override;
-  void SaveSettings(const std::string& settings) override;
+  void SaveSettings(const std::string& name,
+                    const std::string& settings,
+                    const weave::DoneCallback& callback) override;
 
   bool LoadDefaults(const brillo::KeyValueStore& store,
                     weave::Settings* settings);
@@ -85,6 +88,7 @@ class BuffetConfig final : public weave::provider::ConfigStore {
   }
 
  private:
+  base::FilePath CreatePath(const std::string& name) const;
   bool LoadFile(const base::FilePath& file_path,
                 std::string* data,
                 brillo::ErrorPtr* error);

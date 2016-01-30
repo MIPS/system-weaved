@@ -125,36 +125,36 @@ class BuffetConfigTestWithFakes : public testing::Test,
 };
 
 TEST_F(BuffetConfigTestWithFakes, EncryptionEnabled) {
-  config_->SaveSettings("test");
-  ASSERT_NE("test", fake_file_content_["settings_file"]);
-  ASSERT_EQ("test", config_->LoadSettings());
+  config_->SaveSettings("config", "test", {});
+  ASSERT_NE("test", fake_file_content_["settings_file.config"]);
+  ASSERT_EQ("test", config_->LoadSettings("config"));
 }
 
 TEST_F(BuffetConfigTestWithFakes, EncryptionFailure) {
-  config_->SaveSettings("test");
-  ASSERT_FALSE(fake_file_content_["settings_file"].empty());
+  config_->SaveSettings("config", "test", {});
+  ASSERT_FALSE(fake_file_content_["settings_file.config"].empty());
   encryptor_result_ = false;
-  config_->SaveSettings("test2");
+  config_->SaveSettings("config", "test2", {});
   // Encryption fails -> file cleared.
-  ASSERT_TRUE(fake_file_content_["settings_file"].empty());
+  ASSERT_TRUE(fake_file_content_["settings_file.config"].empty());
 }
 
 TEST_F(BuffetConfigTestWithFakes, DecryptionFailure) {
-  config_->SaveSettings("test");
-  ASSERT_FALSE(fake_file_content_["settings_file"].empty());
+  config_->SaveSettings("config", "test", {});
+  ASSERT_FALSE(fake_file_content_["settings_file.config"].empty());
   encryptor_result_ = false;
   // Decryption fails -> empty settings loaded.
-  ASSERT_TRUE(config_->LoadSettings().empty());
+  ASSERT_TRUE(config_->LoadSettings("config").empty());
 }
 
 TEST_F(BuffetConfigTestWithFakes, SettingsIOFailure) {
-  config_->SaveSettings("test");
-  std::string original = fake_file_content_["settings_file"];
+  config_->SaveSettings("config", "test", {});
+  std::string original = fake_file_content_["settings_file.config"];
   ASSERT_FALSE(original.empty());
   io_result_ = false;
-  ASSERT_TRUE(config_->LoadSettings().empty());
-  config_->SaveSettings("test2");
-  ASSERT_EQ(original, fake_file_content_["settings_file"]);
+  ASSERT_TRUE(config_->LoadSettings("config").empty());
+  config_->SaveSettings("config2", "test", {});
+  ASSERT_EQ(original, fake_file_content_["settings_file.config"]);
 }
 
 }  // namespace buffet

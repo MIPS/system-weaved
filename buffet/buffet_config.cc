@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
@@ -166,31 +167,54 @@ bool BuffetConfig::LoadDefaults(const brillo::KeyValueStore& store,
   return true;
 }
 
-std::string BuffetConfig::LoadSettings() {
+std::string BuffetConfig::LoadSettings(const std::string& name) {
   std::string settings_blob;
-  if (!file_io_->ReadFile(options_.settings, &settings_blob)) {
-    LOG(WARNING) << "Failed to read settings, proceeding with empty settings.";
+  base::FilePath path = CreatePath(name);
+  if (!file_io_->ReadFile(path, &settings_blob)) {
+    LOG(WARNING) << "Failed to read \'" + path.value() +
+                        "\', proceeding with empty settings.";
     return std::string();
   }
   std::string json_string;
   if (!encryptor_->DecryptWithAuthentication(settings_blob, &json_string)) {
     LOG(WARNING)
         << "Failed to decrypt settings, proceeding with empty settings.";
-    SaveSettings(std::string());
+    SaveSettings(std::string(), name, {});
     return std::string();
   }
   return json_string;
 }
 
-void BuffetConfig::SaveSettings(const std::string& settings) {
+std::string BuffetConfig::LoadSettings() {
+  return LoadSettings("");
+}
+
+void BuffetConfig::SaveSettings(const std::string& name,
+                                const std::string& settings,
+                                const weave::DoneCallback& callback) {
   std::string encrypted_settings;
+  weave::ErrorPtr error;
+  base::FilePath path = CreatePath(name);
   if (!encryptor_->EncryptWithAuthentication(settings, &encrypted_settings)) {
-    LOG(ERROR) << "Failed to encrypt settings, writing empty settings.";
+    weave::Error::AddTo(&error, FROM_HERE, "file_write_error",
+                        "Failed to encrypt settings.");
     encrypted_settings.clear();
   }
-  if (!file_io_->WriteFile(options_.settings, encrypted_settings)) {
-    LOG(ERROR) << "Failed to write settings.";
+  if (!file_io_->WriteFile(path, encrypted_settings)) {
+    weave::Error::AddTo(&error, FROM_HERE, "file_write_error",
+                        "Failed to write \'" + path.value() +
+                            "\', proceeding with empty settings.");
   }
+  if (!callback.is_null()) {
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(callback, base::Passed(&error)));
+  }
+}
+
+base::FilePath BuffetConfig::CreatePath(const std::string& name) const {
+  return name.empty() ? options_.settings
+                      : options_.settings.InsertBeforeExtension(
+                            base::FilePath::kExtensionSeparator + name);
 }
 
 bool BuffetConfig::LoadFile(const base::FilePath& file_path,
