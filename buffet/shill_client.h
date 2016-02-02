@@ -56,6 +56,10 @@ class ShillClient final : public weave::provider::Network,
                const weave::DoneCallback& callback) override;
   void StartAccessPoint(const std::string& ssid) override;
   void StopAccessPoint() override;
+  bool IsWifi24Supported() const override { return true; }
+  // TODO(avakulenko): See if we can get appropriate information from Shill
+  // regarding 5.0 GHz support.
+  bool IsWifi50Supported() const override { return false; }
 
  private:
   struct DeviceState {
