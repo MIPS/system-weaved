@@ -185,7 +185,7 @@ include $(BUILD_SHARED_LIBRARY)
 # ========================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE := weaved_test
-LOCAL_MODULE_TAGS := debug
+LOCAL_MODULE_TAGS := eng
 LOCAL_CPP_EXTENSION := $(buffetCommonCppExtension)
 LOCAL_CFLAGS := $(buffetCommonCFlags)
 LOCAL_CPPFLAGS := $(buffetCommonCppFlags)
