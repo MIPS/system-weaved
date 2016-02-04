@@ -219,7 +219,15 @@ class ServiceImpl : public std::enable_shared_from_this<ServiceImpl>,
   // A callback for weaved connection termination. When binder service manager
   // notifies client of weaved binder object destruction (e.g. weaved quits),
   // this callback is invoked and initiates re-connection process.
+  // Since the callback can happen synchronously from any call into the binder
+  // driver, this method just posts a message that just asynchronously invokes
+  // "ReconnectOnServiceDisconnection".
   void OnWeaveServiceDisconnected();
+
+  // Asynchronous notification callback of binder service death. Tears down
+  // this instance of ServiceImpl class, creates a new one and re-initiates
+  // the binder connection to the service.
+  void ReconnectOnServiceDisconnection();
 
   android::BinderWrapper* binder_wrapper_;
   brillo::MessageLoop* message_loop_;
@@ -377,14 +385,6 @@ void ServiceImpl::OnServiceConnected(
     const android::sp<android::weave::IWeaveService>& service) {
   weave_service_ = service;
   connection_callback_.Run(shared_from_this());
-  // Call this last in case the binder object is already gone and the death
-  // notification callback (OnWeaveServiceDisconnected) is invoked immediately.
-  // In this case, the instance of ServiceImpl will get destroyed before
-  // RegisterForDeathNotifications returns.
-  binder_wrapper_->RegisterForDeathNotifications(
-      android::IInterface::asBinder(service),
-      base::Bind(&ServiceImpl::OnWeaveServiceDisconnected,
-                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ServiceImpl::OnCommand(
@@ -409,14 +409,22 @@ void ServiceImpl::TryConnecting() {
   android::sp<android::IBinder> binder =
       binder_wrapper_->GetService(weaved::binder::kWeaveServiceName);
   if (!binder.get()) {
-    LOG(INFO) << "Weave service is not available yet. Will try again later";
-    message_loop_->PostDelayedTask(FROM_HERE,
-                                   base::Bind(&ServiceImpl::TryConnecting,
-                                              weak_ptr_factory_.GetWeakPtr()),
-                                   base::TimeDelta::FromSeconds(1));
+    LOG(WARNING) << "Weave service is not available yet. Will try again later";
+    message_loop_->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&ServiceImpl::TryConnecting, weak_ptr_factory_.GetWeakPtr()),
+        base::TimeDelta::FromSeconds(1));
     return;
   }
 
+  bool register_success = binder_wrapper_->RegisterForDeathNotifications(
+      binder, base::Bind(&ServiceImpl::OnWeaveServiceDisconnected,
+                         weak_ptr_factory_.GetWeakPtr()));
+  if (!register_success) {
+    // Something really bad happened here, restart the connection.
+    OnWeaveServiceDisconnected();
+    return;
+  }
   weave_service_manager_ =
       android::interface_cast<android::weave::IWeaveServiceManager>(binder);
   android::sp<WeaveClient> weave_client = new WeaveClient{shared_from_this()};
@@ -427,6 +435,13 @@ void ServiceImpl::TryConnecting() {
 }
 
 void ServiceImpl::OnWeaveServiceDisconnected() {
+  message_loop_->PostTask(
+      FROM_HERE,
+      base::Bind(&ServiceImpl::ReconnectOnServiceDisconnection,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void ServiceImpl::ReconnectOnServiceDisconnection() {
   weave_service_.clear();
   // Need to create a new instance of service to invalidate existing weak
   // pointers.
